@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Badge, Button, Card, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -334,23 +334,44 @@ function BookingPanel(
     queueMicrotask(props.onClose)
   }
 
-  return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">
-            {room?.name} · {period?.label}
-          </h2>
-          <p className="mt-0.5 text-sm text-ink-soft">
-            {formatKoreanDateWithDay(props.date)} {period ? formatSpan(period) : ''}
-          </p>
-        </div>
-        <Button variant="secondary" onClick={props.onClose}>
-          닫기
-        </Button>
-      </div>
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') props.onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-      <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 sm:items-center"
+      onClick={props.onClose}
+    >
+      <div
+        className="w-full max-w-2xl rounded-[14px] border border-line bg-surface p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">
+              {room?.name} · {period?.label}
+            </h2>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              {formatKoreanDateWithDay(props.date)} {period ? formatSpan(period) : ''}
+            </p>
+          </div>
+          <Button variant="secondary" onClick={props.onClose}>
+            닫기
+          </Button>
+        </div>
+
+        <form action={formAction} className="grid gap-4 sm:grid-cols-2">
         <input type="hidden" name="roomId" value={props.roomId} />
         <input type="hidden" name="reservedDate" value={props.date} />
         <input type="hidden" name="course" value={props.course} />
@@ -469,7 +490,8 @@ function BookingPanel(
             ))}
           </ul>
         </div>
-      ) : null}
-    </Card>
+        ) : null}
+      </div>
+    </div>
   )
 }

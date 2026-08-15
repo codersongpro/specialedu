@@ -70,6 +70,7 @@ export default async function CalendarPage({
           source: e.source,
         }))}
         classNames={Object.fromEntries((classes ?? []).map((c) => [c.id, c.name]))}
+        classCourses={Object.fromEntries((classes ?? []).map((c) => [c.id, c.course]))}
       />
     </>
   )

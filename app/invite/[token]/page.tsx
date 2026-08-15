@@ -6,7 +6,7 @@ import { InviteForm } from './invite-form'
 export const metadata = { title: '계정 만들기' }
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: '관리자',
+  admin: '학교관리자',
   manager: '부장',
   teacher: '교사',
   part_time: '시간강사',

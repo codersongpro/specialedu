@@ -9,7 +9,7 @@ const ROLES = [
   { value: 'part_time', label: '시간강사' },
   { value: 'staff', label: '실무사' },
   { value: 'manager', label: '부장' },
-  { value: 'admin', label: '관리자' },
+  { value: 'admin', label: '학교관리자' },
 ] as const
 
 const EMPLOYMENTS = [

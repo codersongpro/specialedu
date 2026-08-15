@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addDays, endOfMonth, format, isSameMonth, parseISO, startOfMonth } from 'date-fns'
 import { Button, Card } from '@/components/ui'
@@ -30,17 +30,27 @@ export interface CalendarEvent {
   source: string
 }
 
-const CATEGORY_TONE: Record<string, string> = {
-  academic: 'bg-brand-soft text-brand',
-  grade_event: 'bg-ok-soft text-ok',
-  course_event: 'bg-ok-soft text-ok',
-  class_event: 'bg-canvas text-ink',
-  exam: 'bg-warn-soft text-warn',
-  vacation: 'bg-danger-soft text-danger',
-  holiday: 'bg-danger-soft text-danger',
-  training: 'bg-brand-soft text-brand',
-  other: 'bg-canvas text-ink-soft',
+const CATEGORY_LABEL: Record<string, string> = {
+  academic: '학사일정',
+  grade_event: '학년행사',
+  course_event: '과정행사',
+  class_event: '학급행사',
+  exam: '평가',
+  vacation: '방학',
+  holiday: '휴업일',
+  training: '연수·협의회',
+  other: '기타',
 }
+
+// 과정(초·중·고·전공과)마다 다른 색으로 보이게 한다. 전교·부서처럼 특정
+// 과정에 속하지 않는 일정은 중립색(NEUTRAL_TONE)을 쓴다.
+const COURSE_TONE: Record<string, string> = {
+  elementary: 'bg-ok-soft text-ok',
+  middle: 'bg-cyan-100 text-cyan-700',
+  high: 'bg-brand-soft text-brand',
+  vocational: 'bg-violet-100 text-violet-700',
+}
+const NEUTRAL_TONE = 'bg-canvas text-ink-soft'
 
 const SCOPE_LABEL: Record<string, string> = {
   school: '전교',
@@ -59,20 +69,30 @@ const COURSE_LABEL: Record<string, string> = {
 
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'] as const
 
+/** class_id 로만 범위가 잡힌 행사는 scopeCourse 가 비어 있어, 학급의 과정을 따로 찾아야 한다 */
+function courseOf(event: CalendarEvent, classCourses: Record<string, string>): string | null {
+  if (event.scopeCourse) return event.scopeCourse
+  if (event.scope === 'class' && event.scopeClassId) return classCourses[event.scopeClassId] ?? null
+  return null
+}
+
 export function CalendarView({
   view,
   anchor,
   monthLabel,
   events,
   classNames,
+  classCourses,
 }: {
   view: 'week' | 'month'
   anchor: string
   monthLabel: string
   events: CalendarEvent[]
   classNames: Record<string, string>
+  classCourses: Record<string, string>
 }) {
   const router = useRouter()
+  const [selected, setSelected] = useState<CalendarEvent | null>(null)
 
   function go(next: { view?: string; date?: string }) {
     const query = new URLSearchParams({
@@ -175,7 +195,14 @@ export function CalendarView({
                     <span className="text-sm text-ink-soft/60">—</span>
                   ) : (
                     dayEvents.map((event) => (
-                      <EventChip key={event.id} event={event} classNames={classNames} showDelete />
+                      <EventChip
+                        key={event.id}
+                        event={event}
+                        classNames={classNames}
+                        classCourses={classCourses}
+                        showDelete
+                        onSelect={setSelected}
+                      />
                     ))
                   )}
                 </div>
@@ -222,7 +249,14 @@ export function CalendarView({
                     </span>
                     <div className="mt-1 space-y-1">
                       {dayEvents.slice(0, 3).map((event) => (
-                        <EventChip key={event.id} event={event} classNames={classNames} compact />
+                        <EventChip
+                          key={event.id}
+                          event={event}
+                          classNames={classNames}
+                          classCourses={classCourses}
+                          compact
+                          onSelect={setSelected}
+                        />
                       ))}
                       {dayEvents.length > 3 ? (
                         <span className="block text-[10px] text-ink-soft">
@@ -237,55 +271,71 @@ export function CalendarView({
           </div>
         </div>
       )}
+
+      {selected ? (
+        <EventDetailModal
+          event={selected}
+          classNames={classNames}
+          classCourses={classCourses}
+          onClose={() => setSelected(null)}
+        />
+      ) : null}
     </Card>
   )
+}
+
+function scopeTextOf(event: CalendarEvent, classNames: Record<string, string>): string {
+  return event.scope === 'class'
+    ? (event.scopeClassId && classNames[event.scopeClassId]) || '학급'
+    : event.scope === 'grade'
+      ? `${COURSE_LABEL[event.scopeCourse ?? ''] ?? ''} ${event.scopeGrade}학년`
+      : event.scope === 'course'
+        ? (COURSE_LABEL[event.scopeCourse ?? ''] ?? '과정')
+        : (SCOPE_LABEL[event.scope] ?? '')
 }
 
 function EventChip({
   event,
   classNames,
+  classCourses,
   compact,
   showDelete,
+  onSelect,
 }: {
   event: CalendarEvent
   classNames: Record<string, string>
+  classCourses: Record<string, string>
   compact?: boolean
   showDelete?: boolean
+  onSelect: (event: CalendarEvent) => void
 }) {
-  const scopeText =
-    event.scope === 'class'
-      ? (event.scopeClassId && classNames[event.scopeClassId]) || '학급'
-      : event.scope === 'grade'
-        ? `${COURSE_LABEL[event.scopeCourse ?? ''] ?? ''} ${event.scopeGrade}학년`
-        : event.scope === 'course'
-          ? (COURSE_LABEL[event.scopeCourse ?? ''] ?? '과정')
-          : (SCOPE_LABEL[event.scope] ?? '')
+  const scopeText = scopeTextOf(event, classNames)
+  const course = courseOf(event, classCourses)
+  const tone = course ? (COURSE_TONE[course] ?? NEUTRAL_TONE) : NEUTRAL_TONE
 
   if (compact) {
     return (
-      <span
+      <button
+        type="button"
         title={`${scopeText} · ${event.title}`}
-        className={cn(
-          'block truncate rounded px-1 py-0.5 text-[10px]',
-          CATEGORY_TONE[event.category] ?? CATEGORY_TONE.other,
-        )}
+        onClick={() => onSelect(event)}
+        className={cn('block w-full truncate rounded px-1 py-0.5 text-left text-[10px]', tone)}
       >
         {event.title}
-      </span>
+      </button>
     )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span
-        className={cn(
-          'rounded px-1.5 py-0.5 text-xs font-medium',
-          CATEGORY_TONE[event.category] ?? CATEGORY_TONE.other,
-        )}
+      <button
+        type="button"
+        onClick={() => onSelect(event)}
+        className="flex flex-wrap items-center gap-2 rounded text-left hover:opacity-80"
       >
-        {scopeText}
-      </span>
-      <span className="text-sm">{event.title}</span>
+        <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', tone)}>{scopeText}</span>
+        <span className="text-sm">{event.title}</span>
+      </button>
       {event.detail ? <span className="text-xs text-ink-soft">{event.detail}</span> : null}
       {event.source !== 'manual' ? (
         <span className="text-[10px] text-ink-soft">나이스</span>
@@ -298,6 +348,72 @@ function EventChip({
           </button>
         </form>
       ) : null}
+    </div>
+  )
+}
+
+function EventDetailModal({
+  event,
+  classNames,
+  classCourses,
+  onClose,
+}: {
+  event: CalendarEvent
+  classNames: Record<string, string>
+  classCourses: Record<string, string>
+  onClose: () => void
+}) {
+  const scopeText = scopeTextOf(event, classNames)
+  const course = courseOf(event, classCourses)
+  const tone = course ? (COURSE_TONE[course] ?? NEUTRAL_TONE) : NEUTRAL_TONE
+  const dateText =
+    event.startsOn === event.endsOn ? event.startsOn : `${event.startsOn} ~ ${event.endsOn}`
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-[14px] border border-line bg-surface p-4 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', tone)}>{scopeText}</span>
+            <span className="rounded bg-canvas px-1.5 py-0.5 text-xs font-medium text-ink-soft">
+              {CATEGORY_LABEL[event.category] ?? event.category}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-2 -mt-1 rounded-lg px-2 py-1 text-[15px] text-ink-soft hover:bg-canvas"
+          >
+            닫기
+          </button>
+        </div>
+
+        <h2 className="text-[17px] font-semibold">{event.title}</h2>
+        <p className="mt-1 tabular text-[15px] text-ink-soft">{dateText}</p>
+        {event.detail ? <p className="mt-2 whitespace-pre-wrap text-[15px]">{event.detail}</p> : null}
+        {event.source !== 'manual' ? (
+          <p className="mt-2 text-[13px] text-ink-soft">나이스 학사일정에서 가져온 일정입니다.</p>
+        ) : null}
+
+        {event.source === 'manual' ? (
+          <form
+            action={deleteEvent}
+            className="mt-4"
+            onSubmit={onClose}
+          >
+            <input type="hidden" name="id" value={event.id} />
+            <button type="submit" className="text-[13.5px] text-ink-soft underline hover:text-danger">
+              이 일정 삭제
+            </button>
+          </form>
+        ) : null}
+      </div>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { getSessionContext, isAdmin } from '@/lib/supabase/server'
 import { visibleNav } from '@/lib/security/sensitivity'
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: '관리자',
+  admin: '학교관리자',
   manager: '부장',
   teacher: '교사',
   part_time: '시간강사',
