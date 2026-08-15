@@ -23,11 +23,15 @@ export function SeedPanel() {
   const [secret, setSecret] = useState('')
   const [state, setState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [detail, setDetail] = useState('')
+  const [log, setLog] = useState<string[]>([])
   const [summary, setSummary] = useState<SeedSummary | null>(null)
 
   async function run() {
     setState('running')
     setMessage('')
+    setDetail('')
+    setLog([])
     setSummary(null)
 
     try {
@@ -40,6 +44,11 @@ export function SeedPanel() {
       if (!response.ok) {
         setState('error')
         setMessage(body.error ?? '실패했습니다')
+        // 서버가 실제 원인(Postgres 에러 메시지 등)을 detail 에 담아 보낸다.
+        // 이게 없으면 "스키마를 확인하세요" 같은 일반 안내문만 보이고
+        // 진짜 원인을 알 수가 없다.
+        setDetail(typeof body.detail === 'string' ? body.detail : '')
+        setLog(Array.isArray(body.log) ? body.log : [])
         return
       }
 
@@ -118,9 +127,25 @@ export function SeedPanel() {
       ) : null}
 
       {state === 'error' ? (
-        <p role="alert" className="mt-2 rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">
-          {message}
-        </p>
+        <div role="alert" className="mt-2 space-y-2">
+          <p className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{message}</p>
+          {detail ? (
+            <div className="rounded-lg bg-canvas p-3">
+              <p className="text-[11px] font-semibold text-ink-soft">실제 원인 (개발자용)</p>
+              <code className="mt-1 block break-all text-[11px] text-ink-soft">{detail}</code>
+            </div>
+          ) : null}
+          {log.length > 0 ? (
+            <div className="rounded-lg bg-canvas p-3">
+              <p className="text-[11px] font-semibold text-ink-soft">
+                여기까지는 됐습니다 ({log.length}줄)
+              </p>
+              <pre className="mt-1 whitespace-pre-wrap break-all text-[11px] text-ink-soft">
+                {log.join('\n')}
+              </pre>
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )
