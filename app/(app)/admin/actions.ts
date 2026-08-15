@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import type { CourseLevel } from '@/lib/scheduling/types'
 import { createInviteToken, inviteExpiryFrom } from '@/lib/security/invite'
 import { encryptSecret, keyHint } from '@/lib/security/crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -112,6 +113,90 @@ export async function saveWeights(
   if (error) return { error: '저장하지 못했습니다' }
 
   revalidatePath('/admin')
+  return { ok: true }
+}
+
+const PeriodRowInput = z.object({
+  periodNo: z.number().int().min(0).max(15),
+  label: z.string().min(1, '이름을 적어 주세요').max(20),
+  startsMin: z.number().int().min(0).max(1440),
+  endsMin: z.number().int().min(0).max(1440),
+  isAfterschool: z.boolean(),
+})
+
+const SavePeriodsInput = z.object({
+  course: z.enum(['elementary', 'middle', 'high', 'vocational']),
+  periods: z.array(PeriodRowInput).max(15),
+})
+
+export interface SavePeriodsResult {
+  error?: string
+  ok?: boolean
+}
+
+/**
+ * 과정 하나의 교시를 통째로 저장한다.
+ *
+ * 행마다 upsert 하는 대신 그 과정의 기존 교시를 전부 지우고 새로
+ * 넣는다 — 화면에서 교시를 추가·삭제해도 번호가 어긋날 일이 없다.
+ * periods 는 다른 테이블이 참조하는 게 아니라 예약·시간표를 만들 때
+ * 값을 그대로 복사해 쓰는 원본이라, 지웠다 다시 만들어도 이미 만들어진
+ * 예약에는 영향이 없다.
+ */
+export async function savePeriods(
+  course: CourseLevel,
+  periods: Array<{
+    periodNo: number
+    label: string
+    startsMin: number
+    endsMin: number
+    isAfterschool: boolean
+  }>,
+): Promise<SavePeriodsResult> {
+  const session = await requireSession()
+  if (!isAdmin(session.profile)) return { error: '권한이 없습니다' }
+
+  const parsed = SavePeriodsInput.safeParse({ course, periods })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? '입력을 확인하세요' }
+  }
+
+  for (const period of parsed.data.periods) {
+    if (period.endsMin <= period.startsMin) {
+      return { error: `${period.label}: 종료 시각이 시작 시각보다 늦어야 합니다` }
+    }
+  }
+  const periodNos = parsed.data.periods.map((p) => p.periodNo)
+  if (new Set(periodNos).size !== periodNos.length) {
+    return { error: '교시 번호가 중복됩니다' }
+  }
+
+  const supabase = await createClient()
+  const { error: deleteError } = await supabase
+    .from('periods')
+    .delete()
+    .eq('school_id', session.school.id)
+    .eq('course', parsed.data.course)
+  if (deleteError) return { error: '저장하지 못했습니다' }
+
+  if (parsed.data.periods.length > 0) {
+    const { error: insertError } = await supabase.from('periods').insert(
+      parsed.data.periods.map((period) => ({
+        school_id: session.school.id,
+        course: parsed.data.course,
+        period_no: period.periodNo,
+        label: period.label,
+        starts_min: period.startsMin,
+        ends_min: period.endsMin,
+        is_afterschool: period.isAfterschool,
+      })),
+    )
+    if (insertError) return { error: '저장하지 못했습니다' }
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/rooms')
+  revalidatePath('/timetable')
   return { ok: true }
 }
 

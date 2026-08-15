@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/supabase/database.types'
+import { COURSE_LEVELS, DEFAULT_PERIODS } from '@/lib/school/default-periods'
 import { createInviteToken, inviteExpiryFrom } from '@/lib/security/invite'
+import type { Database } from '@/lib/supabase/database.types'
 
 /**
  * 학교 개설 + 첫 관리자 초대.
@@ -63,6 +64,34 @@ export async function createSchoolWithFirstAdmin(
 
   // 결보강 가중치는 기본값으로 시작한다. 학교 관리자가 화면에서 조정한다.
   await db.from('substitution_rules').insert({ school_id: school.id })
+
+  // 학기와 교시(시정표)가 없으면 특별실 예약·시간표가 아예 동작하지
+  // 않는다. 9시 시작 기본값으로 깔아 두고, 학교 관리자가 학교 관리
+  // 화면에서 과정별로 실제 시정표로 고쳐 쓴다.
+  const now = new Date()
+  const year = now.getFullYear()
+  await db.from('terms').insert({
+    school_id: school.id,
+    year,
+    semester: now.getMonth() < 7 ? 1 : 2,
+    starts_on: `${year}-01-01`,
+    ends_on: `${year}-12-31`,
+    is_current: true,
+  })
+
+  await db.from('periods').insert(
+    COURSE_LEVELS.flatMap((course) =>
+      DEFAULT_PERIODS.map((period) => ({
+        school_id: school.id,
+        course,
+        period_no: period.periodNo,
+        label: period.label,
+        starts_min: period.startsMin,
+        ends_min: period.endsMin,
+        is_afterschool: period.isAfterschool,
+      })),
+    ),
+  )
 
   // 첫 관리자 초대. 평문 토큰은 여기서 한 번만 만들어지고 DB 에는 해시만 남는다.
   const { token, hash } = createInviteToken()

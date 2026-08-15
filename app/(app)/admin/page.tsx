@@ -1,9 +1,12 @@
 import { redirect } from 'next/navigation'
 import { Badge, Button, Card, PageHeader } from '@/components/ui'
 import { loadWeights } from '@/lib/data/substitution'
+import { COURSE_LEVELS, minutesToTime } from '@/lib/school/default-periods'
+import type { CourseLevel } from '@/lib/scheduling/types'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 import { toggleFreeTextAi } from './actions'
 import { InviteForm } from './invite-form'
+import { PeriodsForm } from './periods-form'
 import { SchoolKeyForm } from './school-key-form'
 import { WeightsForm } from './weights-form'
 
@@ -20,7 +23,7 @@ export default async function AdminPage() {
   if (!isAdmin(session.profile)) redirect('/dashboard')
 
   const supabase = await createClient()
-  const [{ data: invitations }, { data: members }] = await Promise.all([
+  const [{ data: invitations }, { data: members }, { data: periods }] = await Promise.all([
     supabase
       .from('invitations')
       .select('*')
@@ -31,9 +34,32 @@ export default async function AdminPage() {
       .select('id, name, role, employment, is_active')
       .eq('school_id', session.school.id)
       .order('name'),
+    supabase
+      .from('periods')
+      .select('course, period_no, label, starts_min, ends_min, is_afterschool')
+      .eq('school_id', session.school.id)
+      .order('period_no'),
   ])
 
   const { weights, longRunThreshold } = await loadWeights(supabase, session.school.id)
+
+  const periodsByCourse = Object.fromEntries(
+    COURSE_LEVELS.map((course) => [
+      course,
+      (periods ?? [])
+        .filter((p) => p.course === course)
+        .map((p) => ({
+          periodNo: p.period_no,
+          label: p.label,
+          start: minutesToTime(p.starts_min),
+          end: minutesToTime(p.ends_min),
+          isAfterschool: p.is_afterschool,
+        })),
+    ]),
+  ) as Record<
+    CourseLevel,
+    Array<{ periodNo: number; label: string; start: string; end: string; isAfterschool: boolean }>
+  >
 
   return (
     <>
@@ -79,6 +105,17 @@ export default async function AdminPage() {
           </p>
           <div className="mt-4">
             <WeightsForm weights={weights} longRunThreshold={longRunThreshold} />
+          </div>
+        </Card>
+
+        <Card className="p-5 lg:col-span-2">
+          <h2 className="text-sm font-semibold">시정표(교시)</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            과정마다 교시 시각이 다를 수 있어 따로 관리합니다. 기본값은 9시 시작이니, 학교
+            실제 시정표에 맞게 바꾸세요. 특별실 예약·시간표가 이 값을 그대로 씁니다.
+          </p>
+          <div className="mt-4">
+            <PeriodsForm periodsByCourse={periodsByCourse} />
           </div>
         </Card>
 
