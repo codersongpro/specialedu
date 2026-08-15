@@ -61,10 +61,35 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error: '시드에 실패했습니다. 스키마(마이그레이션)를 먼저 적용했는지 확인하세요.',
-        detail: error instanceof Error ? error.message : String(error),
+        detail: describeError(error),
         log: lines,
       },
       { status: 500 },
     )
   }
+}
+
+/**
+ * Supabase 가 던지는 에러(PostgrestError, AuthError 등)는 message 외에
+ * details·hint·code 가 따로 붙어 있는 경우가 많고, 드물게 Error 인스턴스가
+ * 아닌 평범한 객체로 넘어올 때도 있다. error.message 하나만 보면 원인이
+ * 안 보이거나 "[object Object]" 로 뭉개질 수 있어 가진 정보를 다 모은다.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>
+    const parts = ['message', 'details', 'hint', 'code']
+      .map((key) => (record[key] ? `${key}: ${String(record[key])}` : null))
+      .filter((part): part is string => part != null)
+    if (parts.length > 0) return parts.join(' · ')
+    try {
+      return JSON.stringify(error)
+    } catch {
+      // JSON.stringify 도 실패하는 순환 참조 같은 드문 경우
+    }
+  }
+  return String(error)
 }

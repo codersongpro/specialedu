@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDays, format } from 'date-fns'
 import type { Database } from '@/lib/supabase/database.types'
+import { overlaps } from '@/lib/scheduling/time'
 import {
   CLASSES,
   COURSE_GROUPS,
@@ -78,10 +79,11 @@ export async function seedDemoSchool(
   const schoolId = school.id
 
   // --- 부서 ----------------------------------------------------------------
-  const { data: departments } = await db
+  const { data: departments, error: departmentsError } = await db
     .from('departments')
     .insert(DEPARTMENTS.map((name) => ({ school_id: schoolId, name })))
     .select('id, name')
+  if (departmentsError) throw departmentsError
   const deptByName = new Map((departments ?? []).map((d) => [d.name, d.id]))
 
   // --- 교직원 --------------------------------------------------------------
@@ -181,14 +183,15 @@ export async function seedDemoSchool(
   log(`  시정표 ${periodRows.length}줄 (과정마다 시각이 다름)`)
 
   // --- 교과 ----------------------------------------------------------------
-  const { data: subjects } = await db
+  const { data: subjects, error: subjectsError } = await db
     .from('subjects')
     .insert(SUBJECTS.map((name) => ({ school_id: schoolId, name })))
     .select('id, name')
+  if (subjectsError) throw subjectsError
   const subjectByName = new Map((subjects ?? []).map((s) => [s.name, s.id]))
 
   // --- 학급 ----------------------------------------------------------------
-  const { data: classes } = await db
+  const { data: classes, error: classesError } = await db
     .from('classes')
     .insert(
       CLASSES.map(([course, grade, name], index) => ({
@@ -206,11 +209,12 @@ export async function seedDemoSchool(
     )
     .select('id, name, course, grade, student_count, homeroom_teacher_id')
 
+  if (classesError) throw classesError
   const classByName = new Map((classes ?? []).map((c) => [c.name, c]))
   log(`  학급 ${classes?.length ?? 0}개`)
 
   // --- 특별실 --------------------------------------------------------------
-  const { data: rooms } = await db
+  const { data: rooms, error: roomsError } = await db
     .from('rooms')
     .insert(
       ROOMS.map((room) => ({
@@ -226,11 +230,12 @@ export async function seedDemoSchool(
     )
     .select('id, name, requires_approval')
 
+  if (roomsError) throw roomsError
   const roomByName = new Map((rooms ?? []).map((r) => [r.name, r]))
   log(`  특별실 ${rooms?.length ?? 0}개`)
 
   // --- 수강 그룹 -----------------------------------------------------------
-  const { data: courseGroups } = await db
+  const { data: courseGroups, error: courseGroupsError } = await db
     .from('course_groups')
     .insert(
       COURSE_GROUPS.map((group) => ({
@@ -247,18 +252,31 @@ export async function seedDemoSchool(
     )
     .select('id, name, course')
 
+  if (courseGroupsError) throw courseGroupsError
+
   // --- 정규 시간표 ---------------------------------------------------------
   // 학급마다 월~금 1~4교시를 채운다. 교사가 겹치지 않도록 배정을 돌려 쓴다.
+  //
+  // 겹침 판정은 앱 본체와 똑같이 lib/scheduling/time.ts 의 overlaps() 를 쓴다.
+  // "시작 시각이 같은가"로만 비교하면 안 된다 — 초등 2교시(09:50~10:30)와
+  // 중학 2교시(09:55~10:40)는 시작이 달라도 09:55~10:30 이 겹친다. 예전
+  // 코드는 시작 시각만 키로 써서 이 겹침을 놓쳤고, 결국 같은 교사가 두
+  // 과정에 동시에 배정돼 DB 의 이중예약 방지 제약(GIST EXCLUDE)에 걸려
+  // 시드 전체가 실패했다.
   const slotRows: Array<Record<string, unknown>> = []
-  const teacherBusy = new Map<string, Set<string>>() // teacherId → "요일:시작분"
+  const teacherBusy = new Map<string, Array<{ day: number; startsMin: number; endsMin: number }>>()
 
-  const periodByCourse = new Map<string, Array<{ no: number; start: number }>>()
+  const periodByCourse = new Map<string, Array<{ no: number; start: number; end: number }>>()
   for (const [course, rows] of Object.entries(PERIODS)) {
     periodByCourse.set(
       course,
       rows
         .filter(([, , , , after]) => !after)
-        .map(([no, , start]) => ({ no: no as number, start: toMinutes(start as string) })),
+        .map(([no, , start, end]) => ({
+          no: no as number,
+          start: toMinutes(start as string),
+          end: toMinutes(end as string),
+        })),
     )
   }
 
@@ -267,15 +285,17 @@ export async function seedDemoSchool(
     const periods = periodByCourse.get(cls.course) ?? []
     for (let day = 1; day <= 5; day += 1) {
       for (const period of periods.slice(0, 4)) {
+        const span = { startsMin: period.start, endsMin: period.end }
+
         // 그 시각에 비어 있는 교사를 찾는다
         let teacher: (typeof teachers)[number] | undefined
         for (let attempt = 0; attempt < teachers.length; attempt += 1) {
           const candidate = pick(teachers, rotation + attempt)
-          const key = `${day}:${period.start}`
-          const busy = teacherBusy.get(candidate.id) ?? new Set<string>()
-          if (!busy.has(key)) {
-            busy.add(key)
-            teacherBusy.set(candidate.id, busy)
+          const busySpans = teacherBusy.get(candidate.id) ?? []
+          const clash = busySpans.some((b) => b.day === day && overlaps(span, b))
+          if (!clash) {
+            busySpans.push({ day, ...span })
+            teacherBusy.set(candidate.id, busySpans)
             teacher = candidate
             break
           }

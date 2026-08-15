@@ -14,7 +14,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 
 export interface AuditEntry {
-  schoolId: string
+  // 플랫폼 최고관리자의 행동은 특정 학교에 속하지 않을 수 있어 null 을 허용한다.
+  schoolId: string | null
   actorId: string | null
   actorName?: string | null
   action: string
@@ -66,4 +67,7 @@ export const AUDIT_ACTIONS = {
   eventCreate: 'event.create',
   aiRequest: 'ai.request',
   exportDownload: 'export.download',
+  platformLogin: 'platform.login',
+  platformSchoolCreate: 'platform.school_create',
+  platformAdminInvite: 'platform.admin_invite',
 } as const

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo/seed-data'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
+import { isPlatformAdminEmail } from '@/lib/security/platform'
 import { createClient } from '@/lib/supabase/server'
 
 const LoginInput = z.object({
@@ -45,6 +46,18 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     .maybeSingle()
 
   if (!profile || !profile.is_active) {
+    // 학교 profiles 행이 없는 계정이라도, 플랫폼 최고관리자 허용목록에
+    // 있으면 로그인을 허용한다 — 이 사람은 어느 학교에도 속하지 않는다.
+    if (isPlatformAdminEmail(data.user.email)) {
+      await writeAudit({
+        schoolId: null,
+        actorId: data.user.id,
+        actorName: data.user.email ?? null,
+        action: AUDIT_ACTIONS.platformLogin,
+      })
+      redirect('/platform')
+    }
+
     await supabase.auth.signOut()
     return { error: '사용할 수 없는 계정입니다. 관리자에게 문의하세요.' }
   }
