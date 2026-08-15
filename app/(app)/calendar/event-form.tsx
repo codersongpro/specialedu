@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { Button, Field, inputClass } from '@/components/ui'
 import { todayString } from '@/lib/date'
 import { createEvent, type EventState } from './actions'
@@ -24,38 +24,30 @@ const COURSES = [
   { value: 'vocational', label: '전공과' },
 ] as const
 
+const SCOPE_OPTIONS = [
+  { value: 'school', label: '전교' },
+  { value: 'course', label: '과정' },
+  { value: 'grade', label: '학년' },
+  { value: 'class', label: '학급' },
+] as const
+
 export function EventForm({
-  classes,
   allClasses,
-  canPickAnyScope,
+  onSuccess,
 }: {
-  classes: Array<{ id: string; name: string }>
   allClasses: Array<{ id: string; name: string }>
-  canPickAnyScope: boolean
+  onSuccess?: () => void
 }) {
   const [state, formAction, pending] = useActionState<EventState, FormData>(createEvent, {})
-  const [scope, setScope] = useState<string>(canPickAnyScope ? 'school' : 'class')
+  const [scope, setScope] = useState<string>('school')
   const [startsOn, setStartsOn] = useState(todayString())
 
-  const pickableClasses = canPickAnyScope ? allClasses : classes
-
-  // 담임이 아니면 학급 행사만 넣을 수 있다. RLS 에서도 같은 규칙이 걸려 있다.
-  const scopeOptions = canPickAnyScope
-    ? [
-        { value: 'school', label: '전교' },
-        { value: 'course', label: '과정' },
-        { value: 'grade', label: '학년' },
-        { value: 'class', label: '학급' },
-      ]
-    : [{ value: 'class', label: '학급' }]
-
-  if (!canPickAnyScope && classes.length === 0) {
-    return (
-      <p className="text-sm text-ink-soft">
-        담임을 맡은 학급이 없어 행사를 넣을 수 없습니다. 학교 전체 일정은 교무부에 요청하세요.
-      </p>
-    )
-  }
+  // 등록에 성공하면 "등록했습니다"를 잠깐 보여주고 모달을 자동으로 닫는다
+  useEffect(() => {
+    if (!state.ok || !onSuccess) return
+    const timer = setTimeout(onSuccess, 700)
+    return () => clearTimeout(timer)
+  }, [state.ok, onSuccess])
 
   return (
     <form action={formAction} className="space-y-3">
@@ -96,7 +88,7 @@ export function EventForm({
           onChange={(e) => setScope(e.target.value)}
           className={inputClass}
         >
-          {scopeOptions.map((o) => (
+          {SCOPE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -134,7 +126,7 @@ export function EventForm({
       {scope === 'class' ? (
         <Field label="학급" htmlFor="scopeClassId">
           <select id="scopeClassId" name="scopeClassId" required className={inputClass}>
-            {pickableClasses.map((c) => (
+            {allClasses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>

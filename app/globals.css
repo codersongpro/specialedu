@@ -21,6 +21,15 @@
      CDN 없이 npm 패키지(pretendard)를 자체 호스팅한다. */
   --font-sans: var(--font-pretendard), 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui,
     sans-serif;
+
+  /* 참고 디자인의 본문 글자 크기(13.5~17px)에 맞춰 Tailwind 기본 크기표를
+     올려 쓴다. text-sm(14px)·text-xs(12px) 그대로면 화면 전체가 디자인보다
+     한 단계씩 작아 보인다 — 컴포넌트마다 하나씩 고치는 대신 크기표 자체를
+     바꿔 앱 전체에 한 번에 반영한다. */
+  --text-xs: 0.844rem; /* 13.5px */
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.969rem; /* 15.5px */
+  --text-sm--line-height: 1.5;
 }
 
 :root {

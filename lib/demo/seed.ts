@@ -58,13 +58,32 @@ export async function seedDemoSchool(
   log('데모 데이터를 만듭니다...')
 
   // --- 기존 데모 학교 정리 -------------------------------------------------
+  //
+  // profiles 를 거쳐 auth 사용자를 찾으면 안 된다. 예전에 여기서 profiles 로
+  // 대상을 찾았는데, deleteUser 가 한 명이라도 실패하면(레이스·일시 오류)
+  // 그 뒤 school 삭제로 profiles 행만 cascade 로 사라지고 auth.users 에는
+  // 이메일이 그대로 남는 "고아 계정"이 생겼다. 다음 날 같은 이메일로
+  // createUser 를 다시 부르면 "이미 등록된 이메일"로 실패해 시드 전체가
+  // 매번 같은 지점에서 죽고, 그 이메일은 profiles 가 없는 채로 로그인만
+  // 되는 상태(체험하기 버튼이 "데모용이 아닙니다"로 막히는 원인)로 영영
+  // 남았다. 그래서 auth.users 목록에서 @hanbit.demo 이메일을 직접 찾아
+  // 전부 지운다 — profiles 존재 여부와 무관하게 지워야 고아가 남지 않는다.
+  for (let page = 1; ; page += 1) {
+    const { data: userPage, error: listError } = await db.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    })
+    if (listError) throw listError
+    const demoUsers = userPage.users.filter((u) => u.email?.endsWith('@hanbit.demo'))
+    for (const demoUser of demoUsers) {
+      await db.auth.admin.deleteUser(demoUser.id).catch(() => undefined)
+    }
+    if (userPage.users.length < 200) break
+  }
+
   const { data: existing } = await db.from('schools').select('id').eq('is_demo', true)
   for (const school of existing ?? []) {
-    const { data: members } = await db.from('profiles').select('id').eq('school_id', school.id)
-    for (const member of members ?? []) {
-      await db.auth.admin.deleteUser(member.id).catch(() => undefined)
-    }
-    // 나머지는 on delete cascade 로 함께 지워진다
+    // 남은 것은 school 행 자체뿐이다. profiles 등은 on delete cascade 로 함께 지워진다.
     await db.from('schools').delete().eq('id', school.id)
   }
 

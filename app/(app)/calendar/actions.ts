@@ -80,8 +80,7 @@ export async function createEvent(_prev: EventState, formData: FormData): Promis
   })
 
   if (error) {
-    // RLS 에 걸리면 여기로 온다 — 담임이 아닌 학급 행사를 넣으려 한 경우
-    return { error: '등록할 수 없습니다. 담임인 학급의 행사만 넣을 수 있습니다.' }
+    return { error: '등록하지 못했습니다. 잠시 후 다시 시도해 주세요.' }
   }
 
   await writeAudit({

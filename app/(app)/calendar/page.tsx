@@ -1,10 +1,10 @@
 import { addDays, endOfMonth, format, parseISO, startOfMonth } from 'date-fns'
 import { RealtimeRefresh } from '@/components/realtime-refresh'
-import { Card, PageHeader } from '@/components/ui'
+import { PageHeader } from '@/components/ui'
 import { toDateString, todayString, weekDates, weekStart } from '@/lib/date'
 import { createClient, requireSession } from '@/lib/supabase/server'
 import { CalendarView } from './calendar-view'
-import { EventForm } from './event-form'
+import { EventFormModal } from './event-form-modal'
 
 export default async function CalendarPage({
   searchParams,
@@ -36,15 +36,10 @@ export default async function CalendarPage({
       .order('starts_on'),
     supabase
       .from('classes')
-      .select('id, name, course, grade, homeroom_teacher_id, assistant_teacher_id')
+      .select('id, name, course, grade')
       .eq('school_id', session.school.id)
       .order('grade'),
   ])
-
-  const myClasses = (classes ?? []).filter(
-    (c) =>
-      c.homeroom_teacher_id === session.userId || c.assistant_teacher_id === session.userId,
-  )
 
   return (
     <>
@@ -52,38 +47,30 @@ export default async function CalendarPage({
       <PageHeader
         title="학사일정·행사"
         description="학교 전체, 과정, 학년, 학급 일정을 한 화면에서 봅니다."
+        actions={
+          <EventFormModal allClasses={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))} />
+        }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <CalendarView
-          view={view}
-          anchor={anchor}
-          monthLabel={format(parseISO(anchor), 'yyyy년 M월')}
-          events={(events ?? []).map((e) => ({
-            id: e.id,
-            title: e.title,
-            detail: e.detail,
-            startsOn: e.starts_on,
-            endsOn: e.ends_on,
-            scope: e.scope,
-            scopeCourse: e.scope_course,
-            scopeGrade: e.scope_grade,
-            scopeClassId: e.scope_class_id,
-            category: e.category,
-            source: e.source,
-          }))}
-          classNames={Object.fromEntries((classes ?? []).map((c) => [c.id, c.name]))}
-        />
-
-        <Card className="h-fit p-4">
-          <h2 className="mb-3 text-sm font-semibold">행사 넣기</h2>
-          <EventForm
-            classes={myClasses.map((c) => ({ id: c.id, name: c.name }))}
-            allClasses={(classes ?? []).map((c) => ({ id: c.id, name: c.name }))}
-            canPickAnyScope={session.profile.role === 'admin' || session.profile.role === 'manager'}
-          />
-        </Card>
-      </div>
+      <CalendarView
+        view={view}
+        anchor={anchor}
+        monthLabel={format(parseISO(anchor), 'yyyy년 M월')}
+        events={(events ?? []).map((e) => ({
+          id: e.id,
+          title: e.title,
+          detail: e.detail,
+          startsOn: e.starts_on,
+          endsOn: e.ends_on,
+          scope: e.scope,
+          scopeCourse: e.scope_course,
+          scopeGrade: e.scope_grade,
+          scopeClassId: e.scope_class_id,
+          category: e.category,
+          source: e.source,
+        }))}
+        classNames={Object.fromEntries((classes ?? []).map((c) => [c.id, c.name]))}
+      />
     </>
   )
 }
