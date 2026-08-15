@@ -7,22 +7,25 @@ import type { NextConfig } from 'next'
  * connect-src는 Supabase 도메인만 허용해, 설령 XSS가 나더라도 데이터가
  * 임의의 외부 서버로 빠져나가지 못하게 막습니다.
  */
-const supabaseOrigin = (() => {
+const supabaseHttpOrigin = (() => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!url) return ''
   try {
-    const { origin } = new URL(url)
-    return `${origin} ${origin.replace('https://', 'wss://')}`
+    return new URL(url).origin
   } catch {
     return ''
   }
 })()
+const supabaseOrigin = supabaseHttpOrigin
+  ? `${supabaseHttpOrigin} ${supabaseHttpOrigin.replace('https://', 'wss://')}`
+  : ''
 
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://static.arasaac.org https://i.ytimg.com",
+  // 영수증 첨부(Supabase Storage 서명 URL)를 <img> 로 보여줘야 해서 img-src 에도 Supabase 오리진이 필요하다
+  `img-src 'self' data: blob: https://static.arasaac.org https://i.ytimg.com ${supabaseHttpOrigin}`.trim(),
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
   "frame-src https://www.youtube-nocookie.com",
@@ -48,6 +51,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: false,
+  // 영수증 사진(휴대폰 카메라 촬영분)은 1MB 를 쉽게 넘는다 — 기본값보다 넉넉하게
+  experimental: {
+    serverActions: { bodySizeLimit: '8mb' },
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },

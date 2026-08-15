@@ -18,6 +18,8 @@ drop table if exists
   public.ai_cache,
   public.sensitivity_acks,
   public.audit_logs,
+  public.budget_expenses,
+  public.budget_lines,
   public.academic_events,
   public.substitution_rules,
   public.substitution_assignments,

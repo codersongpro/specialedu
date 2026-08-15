@@ -63,7 +63,7 @@ export const NAV: NavCategory[] = [
     key: 'budget',
     label: '살림',
     sensitivity: 'normal',
-    items: [{ href: '/budget', label: '학급·부서 예산', planned: true }],
+    items: [{ href: '/budget', label: '학급·부서 예산' }],
   },
   {
     key: 'student',

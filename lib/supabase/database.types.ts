@@ -314,6 +314,37 @@ export type AiCacheRow = {
   expires_at: string
 }
 
+export type BudgetScope = 'department' | 'class'
+export type BudgetExpenseStatus = 'pending' | 'approved' | 'rejected'
+
+export type BudgetLineRow = {
+  id: string
+  school_id: string
+  fiscal_year: number
+  scope: BudgetScope
+  department_id: string | null
+  class_id: string | null
+  name: string
+  allocated_amount: number
+  note: string | null
+  created_by: string | null
+}
+
+export type BudgetExpenseRow = {
+  id: string
+  school_id: string
+  budget_line_id: string
+  requested_by: string | null
+  amount: number
+  description: string
+  spent_on: string
+  status: BudgetExpenseStatus
+  receipt_path: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  reject_reason: string | null
+}
+
 export type AiUsageLogRow = {
   id: number
   school_id: string
@@ -376,6 +407,8 @@ export type Database = {
       room_reservation_rules: Table<RoomReservationRuleRow>
       ai_cache: Table<AiCacheRow>
       ai_usage_logs: Table<AiUsageLogRow>
+      budget_lines: Table<BudgetLineRow>
+      budget_expenses: Table<BudgetExpenseRow>
     }
     Views: Empty
     Functions: Empty
