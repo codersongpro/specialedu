@@ -70,7 +70,12 @@ export const config = {
   matcher: [
     /*
      * 정적 파일과 이미지 최적화 요청은 건너뛴다.
+     *
+     * icon·apple-icon·manifest.webmanifest 는 파일이 아니라 Next.js 가
+     * 만들어주는 라우트라 이 목록에 안 넣으면 다른 페이지처럼 로그인
+     * 검사에 걸려 리다이렉트된다 — 브라우저·OS 가 로그인 세션 없이도
+     * 파비콘·매니페스트를 가져가야 하므로 반드시 열어 둬야 한다.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

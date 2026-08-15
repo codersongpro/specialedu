@@ -1,4 +1,5 @@
 import { logout } from '@/app/login/actions'
+import { AppMark } from '@/components/brand'
 import { requirePlatformAdmin } from '@/lib/security/platform'
 
 /**
@@ -11,20 +12,26 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   const admin = await requirePlatformAdmin()
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-line bg-surface px-6 py-3.5">
-        <div>
-          <p className="text-sm font-semibold">플랫폼 관리</p>
-          <p className="text-xs text-ink-soft">{admin.email}</p>
+    <div className="min-h-dvh">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <AppMark size={26} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">한아름 · 플랫폼 관리</p>
+            <p className="truncate text-xs text-ink-soft">{admin.email}</p>
+          </div>
         </div>
         <form action={logout}>
-          <button type="submit" className="text-sm text-ink-soft hover:text-ink">
+          <button
+            type="submit"
+            className="shrink-0 text-sm text-ink-soft hover:text-ink"
+          >
             로그아웃
           </button>
         </form>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">{children}</main>
     </div>
   )
 }

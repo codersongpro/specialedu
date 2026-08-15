@@ -1,3 +1,4 @@
+import { AppBrand } from '@/components/brand'
 import { SeedPanel } from './seed-panel'
 
 /**
@@ -30,8 +31,9 @@ export default function SetupPage() {
   ]
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold">셋업</h1>
+    <main className="mx-auto min-h-dvh max-w-2xl px-6 py-16">
+      <AppBrand size="sm" />
+      <h1 className="mt-6 text-2xl font-semibold">셋업</h1>
       <p className="mt-2 text-[15px] text-ink-soft">
         데이터베이스 연결 정보가 없으면 앱을 띄울 수 없습니다. 아래 순서대로 하면 됩니다.
       </p>

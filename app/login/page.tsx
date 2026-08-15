@@ -1,8 +1,9 @@
+import { AppBrand } from '@/components/brand'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DemoButtons } from './demo-buttons'
 import { LoginForm } from './login-form'
 
-export const metadata = { title: '로그인 · 특수학교 업무 지원' }
+export const metadata = { title: '로그인' }
 
 /**
  * 데모 학교가 실제로 들어 있을 때만 둘러보기 버튼을 띄운다.
@@ -33,11 +34,12 @@ export default async function LoginPage({
   const showDemo = await hasDemoSchool()
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex min-h-dvh items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold">특수학교 업무 지원</h1>
-        <p className="mt-1.5 text-sm text-ink-soft">
-          특별실 예약, 결보강, 학사일정을 한 곳에서 봅니다.
+        <AppBrand size="lg" />
+        <p className="mt-3 text-[15px] leading-relaxed text-ink-soft">
+          &ldquo;한 아름&rdquo; 가득 안는다는 뜻입니다. 특별실 예약, 결보강,
+          학사일정을 한 곳에서 봅니다.
         </p>
 
         {demo && NOTICE[demo] ? (

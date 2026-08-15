@@ -56,7 +56,7 @@ export default async function PayrollPage({
           (rows ?? []).length > 0 ? (
             <a
               href={`/api/export/payroll?month=${month}`}
-              className="inline-flex h-9 items-center rounded-lg border border-line bg-surface px-3.5 text-sm font-medium hover:bg-canvas"
+              className="inline-flex h-11 items-center rounded-lg border border-line bg-surface px-4 text-base font-medium hover:bg-canvas"
             >
               CSV 내려받기
             </a>

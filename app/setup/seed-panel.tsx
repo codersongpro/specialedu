@@ -82,7 +82,7 @@ export function SeedPanel() {
 
         <a
           href="/login"
-          className="mt-5 inline-flex h-9 items-center rounded-lg bg-brand px-3.5 text-sm font-medium text-white"
+          className="mt-5 inline-flex h-11 items-center rounded-lg bg-brand px-4 text-base font-medium text-white"
         >
           로그인 화면으로
         </a>
@@ -108,13 +108,13 @@ export function SeedPanel() {
           value={secret}
           onChange={(e) => setSecret(e.target.value)}
           placeholder="SEED_SECRET"
-          className="h-9 flex-1 rounded-lg border border-line px-3 text-sm outline-none focus:border-brand"
+          className="h-11 flex-1 rounded-lg border border-line px-3.5 text-base outline-none focus:border-brand"
         />
         <button
           type="button"
           onClick={run}
           disabled={!secret || state === 'running'}
-          className="h-9 shrink-0 rounded-lg bg-brand px-3.5 text-sm font-medium text-white disabled:opacity-50"
+          className="h-11 shrink-0 rounded-lg bg-brand px-4 text-base font-medium text-white disabled:opacity-50"
         >
           {state === 'running' ? '만드는 중' : '만들기'}
         </button>

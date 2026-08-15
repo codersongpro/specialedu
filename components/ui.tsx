@@ -26,10 +26,12 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
-        {description ? <p className="mt-1 text-sm text-ink-soft">{description}</p> : null}
+        <h1 className="text-[22px] font-semibold tracking-[-0.01em]">{title}</h1>
+        {description ? (
+          <p className="mt-1.5 text-[15px] text-ink-soft">{description}</p>
+        ) : null}
       </div>
-      {actions ? <div className="flex gap-2">{actions}</div> : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
   )
 }
@@ -51,7 +53,9 @@ export function Button({
     <button
       {...props}
       className={cn(
-        'inline-flex h-9 items-center justify-center rounded-lg px-3.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        // h-11(44px)는 애플·구글이 권장하는 최소 터치 영역이다. 화면이 좁은
+        // 곳에서 버튼을 눌러야 하는 교직원이 많아서 기본값을 여기 맞췄다.
+        'inline-flex h-11 items-center justify-center rounded-lg px-4 text-base font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         BUTTON_STYLES[variant],
         className,
       )}
@@ -102,17 +106,17 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium">
+      <label htmlFor={htmlFor} className="block text-[15px] font-medium">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-xs text-ink-soft">{hint}</p> : null}
+      {hint ? <p className="text-[13px] text-ink-soft">{hint}</p> : null}
     </div>
   )
 }
 
 export const inputClass =
-  'h-9 w-full rounded-lg border border-line bg-surface px-3 text-sm outline-none focus:border-brand'
+  'h-11 w-full rounded-lg border border-line bg-surface px-3.5 text-base outline-none focus:border-brand'
 
 /** 데이터가 없을 때. "없습니다"만 띄우지 말고 다음 행동을 알려준다. */
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {

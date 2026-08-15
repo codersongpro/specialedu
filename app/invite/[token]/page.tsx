@@ -1,8 +1,9 @@
+import { AppBrand } from '@/components/brand'
 import { hashInviteToken } from '@/lib/security/invite'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { InviteForm } from './invite-form'
 
-export const metadata = { title: '계정 만들기 · 특수학교 업무 지원' }
+export const metadata = { title: '계정 만들기' }
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '관리자',
@@ -31,8 +32,9 @@ export default async function InvitePage({
 
   if (!invitation || expired || used) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6">
+      <main className="flex min-h-dvh items-center justify-center px-6">
         <div className="w-full max-w-sm">
+          <AppBrand size="sm" className="mb-6" />
           <h1 className="text-xl font-semibold">
             {used ? '이미 사용한 링크입니다' : '쓸 수 없는 링크입니다'}
           </h1>
@@ -56,8 +58,9 @@ export default async function InvitePage({
     .maybeSingle()
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex min-h-dvh items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
+        <AppBrand size="sm" className="mb-6" />
         <h1 className="text-xl font-semibold">비밀번호를 정해 주세요</h1>
         <p className="mt-2 text-sm text-ink-soft">
           {school?.name ?? '학교'} · {invitation.name} {ROLE_LABEL[invitation.role] ?? ''}

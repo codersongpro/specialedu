@@ -17,14 +17,14 @@ export function AppNav({ categories }: { categories: NavCategory[] }) {
   return (
     <nav className="p-3">
       {categories.map((category) => (
-        <div key={category.key} className="mb-4 last:mb-0">
-          <p className="flex items-center gap-1.5 px-2.5 pb-1.5 text-[11px] font-semibold tracking-wide text-ink-soft">
+        <div key={category.key} className="mb-5 last:mb-0">
+          <p className="flex items-center gap-1.5 px-3 pb-1.5 text-[13px] font-semibold tracking-wide text-ink-soft">
             {category.label}
             {category.sensitivity !== 'normal' ? (
               <span
                 aria-hidden
                 className={cn(
-                  'size-1.5 rounded-full',
+                  'size-[7px] rounded-full',
                   category.sensitivity === 'student_sensitive' ? 'bg-danger' : 'bg-warn',
                 )}
               />
@@ -40,9 +40,9 @@ export function AppNav({ categories }: { categories: NavCategory[] }) {
               if (item.planned) {
                 return (
                   <li key={item.href}>
-                    <span className="flex cursor-default items-center justify-between rounded-lg px-2.5 py-1.5 text-sm text-ink-soft/60">
+                    <span className="flex min-h-11 cursor-default items-center justify-between rounded-lg px-3 text-base text-ink-soft/60">
                       {item.label}
-                      <span className="text-[10px]">준비 중</span>
+                      <span className="text-xs">준비 중</span>
                     </span>
                   </li>
                 )
@@ -54,7 +54,7 @@ export function AppNav({ categories }: { categories: NavCategory[] }) {
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'block rounded-lg px-2.5 py-1.5 text-sm transition-colors',
+                      'flex min-h-11 items-center rounded-lg px-3 text-base transition-colors',
                       active
                         ? 'bg-brand-soft font-medium text-brand'
                         : 'text-ink hover:bg-canvas',

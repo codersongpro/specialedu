@@ -40,7 +40,7 @@ export function AbsenceForm({
         ) : (
           <>
             <input type="hidden" name="teacherId" value={me.id} />
-            <p className="flex h-9 items-center rounded-lg border border-line bg-canvas px-3 text-sm">
+            <p className="flex h-11 items-center rounded-lg border border-line bg-canvas px-3.5 text-base">
               {me.name}
             </p>
           </>
