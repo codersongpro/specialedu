@@ -66,3 +66,100 @@ body {
     display: none !important;
   }
 }
+
+/* docs/사용설명서.md 를 렌더링하는 /help 전용 타이포그래피.
+   표가 넓어도 페이지 전체가 가로로 밀리지 않도록 표 자체에 스크롤을 준다. */
+.help-prose {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--color-ink);
+}
+.help-prose h1 {
+  margin: 0 0 0.5em;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.help-prose h2 {
+  margin: 2.2em 0 0.7em;
+  padding-top: 0.8em;
+  border-top: 1px solid var(--color-line);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.help-prose h2:first-of-type {
+  margin-top: 1.2em;
+  padding-top: 0;
+  border-top: none;
+}
+.help-prose h3 {
+  margin: 1.6em 0 0.5em;
+  font-size: 17px;
+  font-weight: 700;
+}
+.help-prose p {
+  margin: 0.9em 0;
+}
+.help-prose ul,
+.help-prose ol {
+  margin: 0.9em 0;
+  padding-left: 1.4em;
+}
+.help-prose li {
+  margin: 0.35em 0;
+}
+.help-prose a {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.help-prose hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid var(--color-line);
+}
+.help-prose blockquote {
+  margin: 1em 0;
+  padding: 0.7em 1em;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 10px 10px 0;
+  background: var(--color-brand-soft);
+  color: var(--color-ink);
+}
+.help-prose code {
+  border-radius: 4px;
+  background: var(--color-canvas);
+  padding: 0.15em 0.4em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+.help-prose pre {
+  overflow-x: auto;
+  border-radius: 10px;
+  background: var(--color-canvas);
+  padding: 1em;
+}
+.help-prose pre code {
+  background: none;
+  padding: 0;
+}
+.help-prose table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.help-prose th,
+.help-prose td {
+  border: 1px solid var(--color-line);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.help-prose th {
+  background: var(--color-canvas);
+  font-weight: 700;
+}

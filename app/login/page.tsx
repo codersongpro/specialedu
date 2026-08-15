@@ -74,6 +74,12 @@ export default async function LoginPage({
           <br />
           로그인이 안 되면 교무실로 문의하세요.
         </p>
+
+        <p className="mt-3 text-xs">
+          <a href="/help" className="text-brand hover:underline">
+            사용 설명서 보기
+          </a>
+        </p>
       </div>
     </main>
   )

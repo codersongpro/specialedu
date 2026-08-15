@@ -92,6 +92,7 @@ export const NAV: NavCategory[] = [
       { href: '/settings', label: '내 설정' },
       { href: '/admin', label: '학교 관리', adminOnly: true },
       { href: '/admin/audit', label: '접속 기록', adminOnly: true },
+      { href: '/help', label: '사용 설명서' },
     ],
   },
 ]

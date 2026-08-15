@@ -14,7 +14,15 @@ import { NextResponse, type NextRequest } from 'next/server'
  * /setup 과 /api/demo 는 아직 계정이 하나도 없는 상태에서 써야 하므로 열어 둔다.
  * 시드 경로는 SEED_SECRET 을 따로 확인하므로 여기서 막지 않아도 된다.
  */
-const PUBLIC_PATHS = ['/login', '/invite', '/privacy', '/api/calendar', '/setup', '/api/demo']
+const PUBLIC_PATHS = [
+  '/login',
+  '/invite',
+  '/privacy',
+  '/api/calendar',
+  '/setup',
+  '/api/demo',
+  '/help',
+]
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
