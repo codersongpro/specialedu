@@ -122,8 +122,9 @@ export default async function AdminPage() {
         <Card className="p-5">
           <h2 className="text-sm font-semibold">학교 공용 Gemini 키</h2>
           <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-            여기에 키를 넣어 두면 전 교직원이 수업 도구함을 바로 쓸 수 있습니다. 무료 키는
-            하루 사용량이 정해져 있어, 사람이 몰리면 개인 키를 등록하도록 안내됩니다.
+            여기에 키를 넣어 두면 전 교직원이 예산 화면의 영수증 자동 인식과 수업 도구함을
+            바로 쓸 수 있습니다. 무료 키는 하루 사용량이 정해져 있어, 사람이 몰리면 개인
+            키를 등록하도록 안내됩니다. 개인 설정에 등록한 키가 있으면 그 키를 우선 씁니다.
           </p>
           {session.school.gemini_key_hint ? (
             <p className="mt-3">

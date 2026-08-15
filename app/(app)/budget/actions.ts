@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { extractReceiptFields } from '@/lib/ai/gemini'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
+import { decryptSecret } from '@/lib/security/crypto'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 
 const RECEIPT_MAX_BYTES = 8 * 1024 * 1024
@@ -80,6 +83,7 @@ const ExpenseInput = z.object({
   amount: z.coerce.number().int().min(1, '금액을 입력해 주세요').max(1_000_000_000),
   description: z.string().min(1, '사용 내역을 적어 주세요').max(300),
   spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  receiptPath: z.string().max(300).optional(),
 })
 
 export interface ExpenseState {
@@ -89,7 +93,11 @@ export interface ExpenseState {
 
 /**
  * 지출 신청(품의). 누구나 넣을 수 있고, 대기중(pending) 상태로 들어간다 —
- * 관리자가 승인해야 배정액에서 실제로 빠진다. 영수증은 선택 첨부다.
+ * 관리자가 승인해야 배정액에서 실제로 빠진다.
+ *
+ * 영수증은 여기서 올리지 않는다. scanReceipt()가 사진을 고르는 순간 이미
+ * 올려서 금액·날짜를 자동으로 채워 두고, 여기서는 그 경로만 넘겨받아
+ * 그대로 저장한다.
  */
 export async function createExpense(
   _prev: ExpenseState,
@@ -102,6 +110,7 @@ export async function createExpense(
     amount: formData.get('amount'),
     description: formData.get('description'),
     spentOn: formData.get('spentOn'),
+    receiptPath: formData.get('receiptPath') || undefined,
   })
 
   if (!parsed.success) {
@@ -109,11 +118,9 @@ export async function createExpense(
   }
   const input = parsed.data
 
-  const receipt = formData.get('receipt')
-  const hasReceipt = receipt instanceof File && receipt.size > 0
-  if (hasReceipt && receipt.size > RECEIPT_MAX_BYTES) {
-    return { error: '영수증 파일은 8MB 이하로 올려 주세요' }
-  }
+  // scanReceipt()가 올린 경로가 아니면(다른 학교 경로를 조작해 넣는 등) 무시한다
+  const receiptPath =
+    input.receiptPath && input.receiptPath.startsWith(`${session.school.id}/`) ? input.receiptPath : null
 
   const supabase = await createClient()
   const { data: created, error } = await supabase
@@ -125,23 +132,12 @@ export async function createExpense(
       amount: input.amount,
       description: input.description,
       spent_on: input.spentOn,
+      receipt_path: receiptPath,
     })
     .select('id')
     .single()
 
   if (error || !created) return { error: '신청하지 못했습니다. 예산 항목을 다시 확인해 주세요.' }
-
-  if (hasReceipt && receipt instanceof File) {
-    const path = `${session.school.id}/${created.id}/${sanitizeFileName(receipt.name)}`
-    const { error: uploadError } = await supabase.storage.from('receipts').upload(path, receipt, {
-      contentType: receipt.type || undefined,
-    })
-    if (!uploadError) {
-      await supabase.from('budget_expenses').update({ receipt_path: path }).eq('id', created.id)
-    }
-    // 영수증 업로드가 실패해도 지출 신청 자체는 이미 됐다 — 신청을 무르지 않는다.
-    // 영수증은 나중에 다시 첨부하도록 안내한다.
-  }
 
   await writeAudit({
     schoolId: session.school.id,
@@ -207,6 +203,72 @@ export async function getReceiptUrl(path: string): Promise<string | null> {
   const supabase = await createClient()
   const { data } = await supabase.storage.from('receipts').createSignedUrl(path, 60)
   return data?.signedUrl ?? null
+}
+
+export interface ReceiptScanResult {
+  path?: string
+  amount?: number | null
+  date?: string | null
+  vendor?: string | null
+  error?: string
+}
+
+/**
+ * 영수증 사진을 고르면 바로 호출된다 — 업로드와 Gemini Vision 인식을
+ * 한 번에 한다. 개인 Gemini 키가 등록돼 있으면 그걸 우선 쓰고, 없으면
+ * 학교 공용 키를 쓴다. 둘 다 없으면 업로드까지만 하고 직접 입력하라고
+ * 알려준다 — 사진 자체는 이미 신청서에 붙게 된다.
+ */
+export async function scanReceipt(file: File): Promise<ReceiptScanResult> {
+  const session = await requireSession()
+
+  if (!(file instanceof File) || file.size === 0) return { error: '파일이 없습니다' }
+  if (file.size > RECEIPT_MAX_BYTES) return { error: '영수증 파일은 8MB 이하로 올려 주세요' }
+
+  const supabase = await createClient()
+  const path = `${session.school.id}/${crypto.randomUUID()}/${sanitizeFileName(file.name)}`
+  const { error: uploadError } = await supabase.storage.from('receipts').upload(path, file, {
+    contentType: file.type || undefined,
+  })
+  if (uploadError) return { error: '업로드하지 못했습니다' }
+
+  const keySource: 'personal' | 'school' | null = session.profile.gemini_key_enc
+    ? 'personal'
+    : session.school.gemini_key_enc
+      ? 'school'
+      : null
+  const encryptedKey = session.profile.gemini_key_enc ?? session.school.gemini_key_enc
+
+  if (!encryptedKey || !keySource) {
+    return { path, error: '등록된 Gemini 키가 없어 자동 인식을 쓸 수 없습니다. 직접 입력해 주세요.' }
+  }
+
+  const admin = createAdminClient()
+  try {
+    const apiKey = decryptSecret(encryptedKey)
+    const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
+    const extracted = await extractReceiptFields(apiKey, base64, file.type || 'image/jpeg')
+
+    await admin.from('ai_usage_logs').insert({
+      school_id: session.school.id,
+      profile_id: session.userId,
+      tool: 'budget_receipt_ocr',
+      key_source: keySource,
+      ok: true,
+    })
+
+    return { path, amount: extracted.amount, date: extracted.date, vendor: extracted.vendor }
+  } catch {
+    await admin.from('ai_usage_logs').insert({
+      school_id: session.school.id,
+      profile_id: session.userId,
+      tool: 'budget_receipt_ocr',
+      key_source: keySource,
+      ok: false,
+      error_code: 'gemini_call_failed',
+    })
+    return { path, error: '자동 인식에 실패했습니다. 아래 칸에 직접 입력해 주세요.' }
+  }
 }
 
 function sanitizeFileName(name: string): string {
