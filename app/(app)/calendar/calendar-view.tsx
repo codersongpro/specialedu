@@ -28,6 +28,8 @@ export interface CalendarEvent {
   scopeClassId: string | null
   category: string
   source: string
+  /** 특별실 예약을 캘린더에 함께 보여줄 때만 쓴다. 학사일정은 항상 'event'. */
+  kind?: 'event' | 'reservation'
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -40,6 +42,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   holiday: '휴업일',
   training: '연수·협의회',
   other: '기타',
+  room_reservation: '특별실 예약',
 }
 
 // 과정(초·중·고·전공과)마다 다른 색으로 보이게 한다. 전교·부서처럼 특정
@@ -337,7 +340,7 @@ function EventChip({
         <span className="text-sm">{event.title}</span>
       </button>
       {event.detail ? <span className="text-xs text-ink-soft">{event.detail}</span> : null}
-      {event.source !== 'manual' ? (
+      {event.kind !== 'reservation' && event.source !== 'manual' ? (
         <span className="text-[10px] text-ink-soft">나이스</span>
       ) : null}
       {showDelete && event.source === 'manual' ? (
@@ -397,7 +400,11 @@ function EventDetailModal({
         <h2 className="text-[17px] font-semibold">{event.title}</h2>
         <p className="mt-1 tabular text-[15px] text-ink-soft">{dateText}</p>
         {event.detail ? <p className="mt-2 whitespace-pre-wrap text-[15px]">{event.detail}</p> : null}
-        {event.source !== 'manual' ? (
+        {event.kind === 'reservation' ? (
+          <p className="mt-2 text-[13px] text-ink-soft">
+            특별실 예약입니다. 취소하려면 특별실 예약 화면에서 하세요.
+          </p>
+        ) : event.source !== 'manual' ? (
           <p className="mt-2 text-[13px] text-ink-soft">나이스 학사일정에서 가져온 일정입니다.</p>
         ) : null}
 

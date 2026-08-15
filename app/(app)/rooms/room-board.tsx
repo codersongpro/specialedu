@@ -426,7 +426,7 @@ function BookingPanel(
         </Field>
 
         <div className="sm:col-span-2">
-          <Field label="무엇을 하나요" htmlFor="purpose" hint="비워 둬도 됩니다">
+          <Field label="수업주제" htmlFor="purpose" hint="직접 적어 주세요. 비워 둬도 됩니다 — 학사일정 화면에도 그대로 보입니다">
             <input
               id="purpose"
               name="purpose"
