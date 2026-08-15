@@ -8,7 +8,13 @@ import { NextResponse, type NextRequest } from 'next/server'
  * 갱신해 쿠키에 다시 심어야 서버 컴포넌트가 로그인 상태를 제대로 본다.
  */
 
-const PUBLIC_PATHS = ['/login', '/invite', '/privacy', '/api/calendar']
+/**
+ * 로그인 없이 열 수 있는 경로.
+ *
+ * /setup 과 /api/demo 는 아직 계정이 하나도 없는 상태에서 써야 하므로 열어 둔다.
+ * 시드 경로는 SEED_SECRET 을 따로 확인하므로 여기서 막지 않아도 된다.
+ */
+const PUBLIC_PATHS = ['/login', '/invite', '/privacy', '/api/calendar', '/setup', '/api/demo']
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
