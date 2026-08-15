@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# env — 실제 키는 절대 커밋하지 않습니다
+.env
+.env.local
+.env*.local
+
+# supabase 로컬 개발
+supabase/.branches
+supabase/.temp
+
+# 테스트 산출물
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# 기타
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+.vercel
