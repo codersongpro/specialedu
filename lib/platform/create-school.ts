@@ -15,6 +15,16 @@ type AdminClient = SupabaseClient<Database>
 
 const DEFAULT_DEPARTMENTS = ['교무부', '연구부', '생활지도부', '진로직업부', '방과후부']
 
+const DEFAULT_BEHAVIOR_CATEGORIES = [
+  '자리 이탈',
+  '지시 거부',
+  '소리 지르기',
+  '물건 던지기',
+  '공격 행동',
+  '자해',
+  '기타',
+]
+
 export class SchoolAlreadyExistsError extends Error {}
 
 export interface NewSchoolInput {
@@ -91,6 +101,15 @@ export async function createSchoolWithFirstAdmin(
         is_afterschool: period.isAfterschool,
       })),
     ),
+  )
+
+  // PBS 기록에서 탭 한 번으로 고를 행동유형 기본값. 학교 관리자가 나중에 조정한다.
+  await db.from('behavior_categories').insert(
+    DEFAULT_BEHAVIOR_CATEGORIES.map((name, index) => ({
+      school_id: school.id,
+      name,
+      sort_order: index,
+    })),
   )
 
   // 첫 관리자 초대. 평문 토큰은 여기서 한 번만 만들어지고 DB 에는 해시만 남는다.

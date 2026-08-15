@@ -85,6 +85,16 @@ export const ALL_DEMO_EMAILS: string[] = [
 
 export const DEPARTMENTS = ['교무부', '연구부', '생활지도부', '진로직업부', '방과후부']
 
+export const BEHAVIOR_CATEGORIES = [
+  '자리 이탈',
+  '지시 거부',
+  '소리 지르기',
+  '물건 던지기',
+  '공격 행동',
+  '자해',
+  '기타',
+]
+
 export const SUBJECTS = [
   '국어',
   '수학',

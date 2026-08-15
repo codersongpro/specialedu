@@ -358,6 +358,27 @@ export type AiUsageLogRow = {
   created_at: string
 }
 
+export type BehaviorCategoryRow = {
+  id: string
+  school_id: string
+  name: string
+  sort_order: number
+  is_active: boolean
+}
+
+export type PbsRecordRow = {
+  id: string
+  school_id: string
+  student_id: string
+  category_id: string | null
+  occurred_at: string
+  location: string | null
+  antecedent_enc: string | null
+  consequence_enc: string | null
+  note_enc: string | null
+  recorded_by: string | null
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -409,6 +430,8 @@ export type Database = {
       ai_usage_logs: Table<AiUsageLogRow>
       budget_lines: Table<BudgetLineRow>
       budget_expenses: Table<BudgetExpenseRow>
+      behavior_categories: Table<BehaviorCategoryRow>
+      pbs_records: Table<PbsRecordRow>
     }
     Views: Empty
     Functions: Empty

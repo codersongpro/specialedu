@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDays, format } from 'date-fns'
+import { encryptSecret } from '@/lib/security/crypto'
 import type { Database } from '@/lib/supabase/database.types'
 import { overlaps } from '@/lib/scheduling/time'
 import {
+  BEHAVIOR_CATEGORIES,
   CLASSES,
   COURSE_GROUPS,
   DEMO_ACCOUNTS,
@@ -565,8 +567,41 @@ export async function seedDemoSchool(
       display_name: `${cls.name} ${i + 1}번`,
     })),
   )
-  await db.from('students').insert(studentRows)
+  const { data: students, error: studentsError } = await db
+    .from('students')
+    .insert(studentRows)
+    .select('id')
+  if (studentsError) throw studentsError
   log(`  학생 ${studentRows.length}명 (가명처리 — 실명 없음)`)
+
+  // --- PBS 행동유형 + 기록 샘플 ---------------------------------------------
+  const { data: behaviorCategories, error: categoriesError } = await db
+    .from('behavior_categories')
+    .insert(BEHAVIOR_CATEGORIES.map((name, index) => ({ school_id: schoolId, name, sort_order: index })))
+    .select('id')
+  if (categoriesError) throw categoriesError
+
+  const pbsStudents = (students ?? []).slice(0, 4)
+  const pbsRows = pbsStudents.flatMap((student, si) =>
+    Array.from({ length: 6 }, (_, i) => {
+      const daysAgo = i * 6 + si * 2
+      const category = pick(behaviorCategories ?? [], si + i)
+      return {
+        school_id: schoolId,
+        student_id: student.id,
+        category_id: category?.id ?? null,
+        occurred_at: addDays(today, -daysAgo).toISOString(),
+        location: pick(['교실', '운동장', '급식실', '복도'], si + i),
+        recorded_by: teachers[0]!.id,
+        note_enc: i % 3 === 0 ? encryptSecret('짧게 진정 시간을 가진 뒤 스스로 돌아옴') : null,
+      }
+    }),
+  )
+  if (pbsRows.length > 0) {
+    const { error: pbsError } = await db.from('pbs_records').insert(pbsRows)
+    if (pbsError) throw pbsError
+  }
+  log(`  PBS 기록 ${pbsRows.length}건 (학생 ${pbsStudents.length}명)`)
 
   // --- 결보강 가중치 기본값 ------------------------------------------------
   await db.from('substitution_rules').insert({ school_id: schoolId })
