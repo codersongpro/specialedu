@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo/seed-data'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { createClient } from '@/lib/supabase/server'
 
@@ -65,4 +66,58 @@ export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
+}
+
+/**
+ * 데모 계정으로 바로 들어가기.
+ *
+ * 비밀번호를 숨기는 기능이 아니다 — 데모 계정과 비밀번호는 README 에 적혀 있다.
+ * 역할별로 화면이 어떻게 다른지 눌러서 바로 보라고 만든 버튼이다.
+ *
+ * 안전장치는 두 겹이다:
+ *   - 미리 정해 둔 4개 이메일만 받는다
+ *   - 로그인한 뒤 그 계정이 정말 데모 학교 소속인지 확인하고, 아니면 되돌린다
+ */
+export async function demoLogin(formData: FormData): Promise<void> {
+  const email = String(formData.get('email') ?? '')
+
+  if (!DEMO_ACCOUNTS.some((account) => account.email === email)) {
+    redirect('/login')
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: DEMO_PASSWORD,
+  })
+
+  if (error || !data.user) {
+    redirect('/login?demo=missing')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('school_id, name')
+    .eq('id', data.user.id)
+    .maybeSingle()
+
+  const { data: school } = profile
+    ? await supabase.from('schools').select('is_demo').eq('id', profile.school_id).maybeSingle()
+    : { data: null }
+
+  // 같은 이메일로 실제 계정이 만들어져 있다면 여기서 걸린다
+  if (!profile || !school?.is_demo) {
+    await supabase.auth.signOut()
+    redirect('/login?demo=blocked')
+  }
+
+  await writeAudit({
+    schoolId: profile.school_id,
+    actorId: data.user.id,
+    actorName: profile.name,
+    action: AUDIT_ACTIONS.login,
+    meta: { via: 'demo_button' },
+  })
+
+  redirect('/dashboard')
 }
