@@ -13,10 +13,11 @@
     "test:e2e": "playwright test",
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "db:reset": "supabase db reset",
-    "seed:demo": "tsx scripts/seed.ts"
+    "seed:demo": "tsx scripts/seed.ts",
+    "school:new": "tsx scripts/new-school.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.47.10",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -24,10 +25,12 @@
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@playwright/test": "^1.49.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",

@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #1a1d21;
+  --color-ink-soft: #5b6470;
+  --color-line: #e3e6ea;
+  --color-surface: #ffffff;
+  --color-canvas: #f6f7f9;
+
+  --color-brand: #1d6fd8;
+  --color-brand-soft: #eaf2fd;
+
+  --color-warn: #b45309;
+  --color-warn-soft: #fef4e6;
+  --color-danger: #c0362c;
+  --color-danger-soft: #fdeceb;
+  --color-ok: #17795e;
+  --color-ok-soft: #e6f4ef;
+
+  --font-sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* 한글은 자간이 좁으면 읽기 힘들다. 교직원이 하루 종일 보는 화면이라 조금 넉넉하게. */
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 표에서 숫자가 흔들리지 않게 */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 키보드 사용자를 위한 포커스 표시 — 접근성 기본 */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

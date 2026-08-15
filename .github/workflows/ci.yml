@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: 타입 검사
+        run: npm run typecheck
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 단위 테스트
+        run: npm run test
+
+      - name: 빌드
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://build-check.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-check
+
+      # service role 키가 클라이언트 번들에 섞여 들어가면 학교 전체 데이터가 노출된다.
+      # 빌드 산출물을 직접 뒤져서 확인한다.
+      - name: 서비스 키가 브라우저 번들에 없는지 확인
+        run: |
+          if grep -rl "SUPABASE_SERVICE_ROLE_KEY" .next/static 2>/dev/null; then
+            echo "service role 키가 클라이언트 번들에 들어갔습니다"
+            exit 1
+          fi
+          echo "확인 완료"
+
+      - name: 비밀 키에 NEXT_PUBLIC 접두사가 붙지 않았는지 확인
+        run: |
+          if grep -rn "NEXT_PUBLIC_SUPABASE_SERVICE\|NEXT_PUBLIC_GEMINI" \
+              --include="*.ts" --include="*.tsx" . 2>/dev/null | grep -v node_modules; then
+            echo "비밀 키에 NEXT_PUBLIC_ 접두사가 붙어 있습니다"
+            exit 1
+          fi
+          echo "확인 완료"
