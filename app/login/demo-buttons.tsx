@@ -10,7 +10,7 @@ import { demoLogin } from './actions'
 export function DemoButtons() {
   return (
     <div className="mt-8 rounded-xl border border-line bg-surface p-4">
-      <p className="text-sm font-semibold">둘러보기</p>
+      <p className="text-sm font-semibold">특정 역할로 둘러보기</p>
       <p className="mt-1 text-xs leading-relaxed text-ink-soft">
         가상 학교 「한빛특수학교」입니다. 여기 나오는 학생·교직원은 모두 지어낸 인물입니다.
         역할에 따라 보이는 화면이 다르니 눌러서 비교해 보세요.

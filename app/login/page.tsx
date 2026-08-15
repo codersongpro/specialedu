@@ -1,4 +1,6 @@
+import { tryItNow } from './actions'
 import { AppBrand } from '@/components/brand'
+import { Button } from '@/components/ui'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DemoButtons } from './demo-buttons'
 import { LoginForm } from './login-form'
@@ -48,7 +50,22 @@ export default async function LoginPage({
           </p>
         ) : null}
 
-        {showDemo ? <DemoButtons /> : null}
+        {showDemo ? (
+          <>
+            <form action={tryItNow} className="mt-6">
+              <Button type="submit" className="w-full">
+                지금 바로 체험하기
+              </Button>
+              <p className="mt-2 text-center text-[13px] text-ink-soft">
+                역할이 무작위로 배정됩니다. 다른 사람과 동시에 눌러도 각자 다른
+                사람으로 들어가 같은 학교 데이터를 실시간으로 함께 볼 수 있어요.
+                데이터는 매일 새벽 자동으로 초기화됩니다.
+              </p>
+            </form>
+
+            <DemoButtons />
+          </>
+        ) : null}
 
         <LoginForm next={next} />
 

@@ -18,7 +18,7 @@ export function AppNav({ categories }: { categories: NavCategory[] }) {
     <nav className="p-3">
       {categories.map((category) => (
         <div key={category.key} className="mb-5 last:mb-0">
-          <p className="flex items-center gap-1.5 px-3 pb-1.5 text-[13px] font-semibold tracking-wide text-ink-soft">
+          <p className="flex items-center gap-1.5 px-3 pb-1.5 text-[13px] font-semibold tracking-[.02em] text-ink-soft">
             {category.label}
             {category.sensitivity !== 'normal' ? (
               <span
@@ -42,7 +42,7 @@ export function AppNav({ categories }: { categories: NavCategory[] }) {
                   <li key={item.href}>
                     <span className="flex min-h-11 cursor-default items-center justify-between rounded-lg px-3 text-base text-ink-soft/60">
                       {item.label}
-                      <span className="text-xs">준비 중</span>
+                      <span className="text-[13px]">준비 중</span>
                     </span>
                   </li>
                 )

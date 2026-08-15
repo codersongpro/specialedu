@@ -77,19 +77,19 @@ export default async function PayrollPage({
             <ul className="divide-y divide-line">
               {(rows ?? []).map((row) => (
                 <li key={row.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5 text-sm">
-                  <span className="text-xs text-ink-soft tabular">
+                  <span className="whitespace-nowrap text-xs text-ink-soft tabular">
                     {formatKoreanDateWithDay(row.assign_date)}
                   </span>
-                  <span className="text-xs text-ink-soft tabular">
+                  <span className="whitespace-nowrap text-xs text-ink-soft tabular">
                     {row.period_no}교시{' '}
                     {formatSpan({ startsMin: row.starts_min, endsMin: row.ends_min })}
                   </span>
-                  <span className="font-medium">
+                  <span className="whitespace-nowrap font-medium">
                     {row.assigned_teacher_id
                       ? (nameById.get(row.assigned_teacher_id) ?? '')
                       : '미배정'}
                   </span>
-                  <span className="text-xs text-ink-soft">
+                  <span className="whitespace-nowrap text-xs text-ink-soft">
                     {(row.class_id && classById.get(row.class_id)) || ''}
                   </span>
                 </li>

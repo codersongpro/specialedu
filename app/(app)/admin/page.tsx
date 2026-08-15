@@ -55,11 +55,13 @@ export default async function AdminPage() {
               <p className="text-xs font-semibold text-ink-soft">아직 가입 안 한 초대</p>
               <ul className="mt-2 space-y-1.5">
                 {(invitations ?? []).map((invitation) => (
-                  <li key={invitation.id} className="flex items-baseline gap-2 text-sm">
+                  <li key={invitation.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                     <span className="font-medium">{invitation.name}</span>
-                    <span className="text-xs text-ink-soft">{invitation.email}</span>
+                    <span className="whitespace-nowrap text-xs text-ink-soft">
+                      {invitation.email}
+                    </span>
                     <Badge>{ROLE_LABEL[invitation.role]}</Badge>
-                    <span className="ml-auto text-[11px] text-ink-soft tabular">
+                    <span className="ml-auto whitespace-nowrap text-[11px] text-ink-soft tabular">
                       {invitation.expires_at.slice(0, 10)}까지
                     </span>
                   </li>

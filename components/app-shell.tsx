@@ -72,14 +72,14 @@ export function AppShell({
       <AppMark size={26} />
       <div className="min-w-0">
         <p className="text-[13px] font-semibold text-ink-soft">한아름</p>
-        <p className="truncate text-[15px] font-semibold">{schoolName}</p>
+        <p className="truncate text-[17px] font-semibold">{schoolName}</p>
       </div>
     </div>
   )
 
   const bodyBlock = (
     <>
-      <p className="border-b border-line px-4 py-2.5 text-[13px] text-ink-soft">
+      <p className="border-b border-line px-4 py-2.5 text-[15px] text-ink-soft">
         {profileName} {roleLabel}
       </p>
 
@@ -108,7 +108,7 @@ export function AppShell({
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden">
         <div className="flex min-w-0 items-center gap-2">
           <AppMark size={24} />
-          <p className="truncate text-[15px] font-semibold leading-tight">{schoolName}</p>
+          <p className="truncate text-[16.5px] font-semibold leading-tight">{schoolName}</p>
         </div>
         <button
           type="button"

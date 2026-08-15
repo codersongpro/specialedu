@@ -10,7 +10,9 @@ export function Card({
   children: React.ReactNode
 }) {
   return (
-    <div className={cn('rounded-xl border border-line bg-surface', className)}>{children}</div>
+    <div className={cn('rounded-[14px] border border-line bg-surface', className)}>
+      {children}
+    </div>
   )
 }
 
@@ -26,9 +28,9 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em]">{title}</h1>
+        <h1 className="text-[28px] font-semibold tracking-[-0.02em]">{title}</h1>
         {description ? (
-          <p className="mt-1.5 text-[15px] text-ink-soft">{description}</p>
+          <p className="mt-2 text-[17px] text-ink-soft">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -83,7 +85,9 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium',
+        // 배지는 안에서 줄바꿈되면 안 된다 — 좁은 화면에서 글자가 세로로
+        // 쪼개져 보이는 원인의 대부분이 이거다.
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-2 py-0.5 text-[13.5px] font-semibold',
         BADGE_STYLES[tone],
         className,
       )}
@@ -122,8 +126,8 @@ export const inputClass =
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="px-4 py-12 text-center">
-      <p className="text-sm font-medium text-ink-soft">{title}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-soft">{hint}</p> : null}
+      <p className="text-[15px] font-medium text-ink-soft">{title}</p>
+      {hint ? <p className="mt-1 text-[13px] text-ink-soft">{hint}</p> : null}
     </div>
   )
 }

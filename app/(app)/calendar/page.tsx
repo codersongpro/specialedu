@@ -1,4 +1,5 @@
 import { addDays, endOfMonth, format, parseISO, startOfMonth } from 'date-fns'
+import { RealtimeRefresh } from '@/components/realtime-refresh'
 import { Card, PageHeader } from '@/components/ui'
 import { toDateString, todayString, weekDates, weekStart } from '@/lib/date'
 import { createClient, requireSession } from '@/lib/supabase/server'
@@ -47,6 +48,7 @@ export default async function CalendarPage({
 
   return (
     <>
+      <RealtimeRefresh schoolId={session.school.id} tables={['academic_events']} />
       <PageHeader
         title="학사일정·행사"
         description="학교 전체, 과정, 학년, 학급 일정을 한 화면에서 봅니다."

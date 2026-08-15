@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo/seed-data'
+import { ALL_DEMO_EMAILS, DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo/seed-data'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { isPlatformAdminEmail } from '@/lib/security/platform'
 import { createClient } from '@/lib/supabase/server'
@@ -82,22 +82,14 @@ export async function logout() {
 }
 
 /**
- * 데모 계정으로 바로 들어가기.
- *
- * 비밀번호를 숨기는 기능이 아니다 — 데모 계정과 비밀번호는 README 에 적혀 있다.
- * 역할별로 화면이 어떻게 다른지 눌러서 바로 보라고 만든 버튼이다.
+ * 데모 계정으로 로그인하고 대시보드로 보낸다. demoLogin·tryItNow 가 같이 쓴다.
  *
  * 안전장치는 두 겹이다:
- *   - 미리 정해 둔 4개 이메일만 받는다
- *   - 로그인한 뒤 그 계정이 정말 데모 학교 소속인지 확인하고, 아니면 되돌린다
+ *   - 호출하는 쪽에서 정해둔 이메일 목록 안의 것만 받는다
+ *   - 로그인한 뒤 그 계정이 정말 데모 학교 소속인지 다시 확인하고, 아니면 되돌린다
+ *     (같은 이메일로 실제 계정이 따로 만들어져 있는 경우를 막는다)
  */
-export async function demoLogin(formData: FormData): Promise<void> {
-  const email = String(formData.get('email') ?? '')
-
-  if (!DEMO_ACCOUNTS.some((account) => account.email === email)) {
-    redirect('/login')
-  }
-
+async function signInToDemo(email: string, via: string): Promise<void> {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -118,7 +110,6 @@ export async function demoLogin(formData: FormData): Promise<void> {
     ? await supabase.from('schools').select('is_demo').eq('id', profile.school_id).maybeSingle()
     : { data: null }
 
-  // 같은 이메일로 실제 계정이 만들어져 있다면 여기서 걸린다
   if (!profile || !school?.is_demo) {
     await supabase.auth.signOut()
     redirect('/login?demo=blocked')
@@ -129,8 +120,35 @@ export async function demoLogin(formData: FormData): Promise<void> {
     actorId: data.user.id,
     actorName: profile.name,
     action: AUDIT_ACTIONS.login,
-    meta: { via: 'demo_button' },
+    meta: { via },
   })
 
   redirect('/dashboard')
+}
+
+/**
+ * 데모 계정으로 바로 들어가기.
+ *
+ * 비밀번호를 숨기는 기능이 아니다 — 데모 계정과 비밀번호는 README 에 적혀 있다.
+ * 역할별로 화면이 어떻게 다른지 눌러서 바로 보라고 만든 버튼이다.
+ * 미리 정해 둔 4개 이메일만 받는다.
+ */
+export async function demoLogin(formData: FormData): Promise<void> {
+  const email = String(formData.get('email') ?? '')
+  if (!DEMO_ACCOUNTS.some((account) => account.email === email)) redirect('/login')
+  await signInToDemo(email, 'demo_button')
+}
+
+/**
+ * 체험하기 — 역할을 고르지 않고 버튼 하나로 바로 들어간다.
+ *
+ * 25개 데모 계정 중 하나를 무작위로 골라 로그인시킨다. 계정을 넓게
+ * 흩어 놓는 이유는 여러 사람이 동시에 이 버튼을 눌러도 서로 다른 계정으로
+ * 들어가게 하기 위해서다 — 그래야 같은 학교 데이터를 실시간으로 함께
+ * 편집하는 모습(Realtime)을 자연스럽게 볼 수 있다. 계정 하나에 몰리면
+ * 여러 사람이 한 세션을 나눠 쓰는 꼴이 되어 체감이 이상해진다.
+ */
+export async function tryItNow(): Promise<void> {
+  const email = ALL_DEMO_EMAILS[Math.floor(Math.random() * ALL_DEMO_EMAILS.length)]!
+  await signInToDemo(email, 'try_it_now')
 }

@@ -1,3 +1,4 @@
+import { RealtimeRefresh } from '@/components/realtime-refresh'
 import { PageHeader } from '@/components/ui'
 import { isoDayOfWeek, todayString } from '@/lib/date'
 import { getCurrentTerm, loadScheduleContext, periodsFor } from '@/lib/data/context'
@@ -70,6 +71,7 @@ export default async function RoomsPage({
 
   return (
     <>
+      <RealtimeRefresh schoolId={session.school.id} tables={['room_reservations']} />
       <PageHeader
         title="특별실 예약"
         description="빈 칸을 누르면 예약할 수 있습니다. 겹치는 일정이 있으면 바로 알려 줍니다."

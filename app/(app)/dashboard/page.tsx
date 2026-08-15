@@ -80,8 +80,8 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-line">
               {myLessons.map((lesson) => (
-                <li key={lesson.id} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-                  <span className="w-24 shrink-0 text-xs text-ink-soft tabular">
+                <li key={lesson.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 text-base">
+                  <span className="w-24 shrink-0 whitespace-nowrap text-[15px] text-ink-soft tabular">
                     {formatSpan(lesson)}
                   </span>
                   <span className="font-medium">
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
                       '수업'}
                   </span>
                   {lesson.roomId ? (
-                    <span className="text-xs text-ink-soft">
+                    <span className="whitespace-nowrap text-[15px] text-ink-soft">
                       {ctx.rooms.get(lesson.roomId)?.name}
                     </span>
                   ) : null}
@@ -113,12 +113,12 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-line">
               {myReservations.map((r) => (
-                <li key={r.id} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-                  <span className="w-24 shrink-0 text-xs text-ink-soft tabular">
+                <li key={r.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 text-base">
+                  <span className="w-24 shrink-0 whitespace-nowrap text-[15px] text-ink-soft tabular">
                     {formatSpan(r)}
                   </span>
                   <span className="font-medium">{ctx.rooms.get(r.roomId)?.name}</span>
-                  <span className="text-xs text-ink-soft">{BOOKING_KIND_LABEL[r.kind]}</span>
+                  <span className="whitespace-nowrap text-[15px] text-ink-soft">{BOOKING_KIND_LABEL[r.kind]}</span>
                   {r.status === 'pending' ? <Badge tone="warn">승인 대기</Badge> : null}
                 </li>
               ))}
@@ -138,15 +138,15 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-line">
               {mySubs.map((sub) => (
-                <li key={sub.id} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-                  <span className="w-24 shrink-0 text-xs text-ink-soft tabular">
+                <li key={sub.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3 text-base">
+                  <span className="w-24 shrink-0 whitespace-nowrap text-[15px] text-ink-soft tabular">
                     {formatSpan({ startsMin: sub.starts_min, endsMin: sub.ends_min })}
                   </span>
                   <span className="font-medium">
                     {(sub.class_id && ctx.classes.get(sub.class_id)?.name) || '수업'}
                   </span>
                   {sub.room_id ? (
-                    <span className="text-xs text-ink-soft">
+                    <span className="whitespace-nowrap text-[15px] text-ink-soft">
                       {ctx.rooms.get(sub.room_id)?.name}
                     </span>
                   ) : null}
@@ -169,10 +169,10 @@ export default async function DashboardPage() {
           ) : (
             <ul className="divide-y divide-line">
               {events.map((event) => (
-                <li key={event.id} className="px-4 py-2.5 text-sm">
+                <li key={event.id} className="px-4 py-3 text-base">
                   <span className="font-medium">{event.title}</span>
                   {event.detail ? (
-                    <span className="ml-2 text-xs text-ink-soft">{event.detail}</span>
+                    <span className="ml-2 text-[15px] text-ink-soft">{event.detail}</span>
                   ) : null}
                 </li>
               ))}
@@ -197,12 +197,12 @@ function SectionTitle({
 }) {
   return (
     <div className="flex items-center justify-between border-b border-line px-4 py-3">
-      <h2 className="text-sm font-semibold">
+      <h2 className="text-[17px] font-semibold">
         {title}
-        {count > 0 ? <span className="ml-1.5 text-ink-soft">{count}</span> : null}
+        {count > 0 ? <span className="ml-1.5 font-normal text-ink-soft">{count}</span> : null}
       </h2>
       {href ? (
-        <Link href={href} className="text-xs text-brand">
+        <Link href={href} className="text-[15px] font-semibold text-brand">
           {linkLabel}
         </Link>
       ) : null}

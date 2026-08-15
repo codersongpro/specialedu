@@ -69,6 +69,20 @@ export const EXTRA_STAFF = [
   { name: '표설아', role: 'teacher', employment: 'full_time' },
 ] as const
 
+/**
+ * 로그인 가능한 데모 계정 전체 (25개) 의 이메일.
+ *
+ * "체험하기" 버튼이 이 중 하나를 무작위로 골라 넣어준다. 계정을 넓게
+ * 흩어 놓아야 여러 사람이 동시에 눌러도 서로 다른 사람으로 들어가고,
+ * 같은 학교 데이터를 실시간으로 함께 편집하는 모습을 자연스럽게 보게 된다.
+ * scripts/seed.ts·lib/demo/seed.ts 가 EXTRA_STAFF 를 `staff${n}@hanbit.demo`
+ * 순서로 계정을 만들므로 그 규칙을 그대로 따른다.
+ */
+export const ALL_DEMO_EMAILS: string[] = [
+  ...DEMO_ACCOUNTS.map((a) => a.email),
+  ...EXTRA_STAFF.map((_, index) => `staff${index + 1}@hanbit.demo`),
+]
+
 export const DEPARTMENTS = ['교무부', '연구부', '생활지도부', '진로직업부', '방과후부']
 
 export const SUBJECTS = [

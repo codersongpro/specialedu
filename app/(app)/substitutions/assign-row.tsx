@@ -42,12 +42,12 @@ export function AssignRow({
   return (
     <li className="px-4 py-3">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-        <span className="text-xs text-ink-soft tabular">{date}</span>
-        <span className="text-xs text-ink-soft tabular">
+        <span className="whitespace-nowrap text-xs text-ink-soft tabular">{date}</span>
+        <span className="whitespace-nowrap text-xs text-ink-soft tabular">
           {periodLabel} {span}
         </span>
-        <span className="font-medium">{className}</span>
-        <span className="text-xs text-ink-soft">
+        <span className="whitespace-nowrap font-medium">{className}</span>
+        <span className="whitespace-nowrap text-xs text-ink-soft">
           {absentName} {reason}
         </span>
 

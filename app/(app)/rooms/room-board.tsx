@@ -460,8 +460,8 @@ function BookingPanel(
           <p className="text-xs font-semibold text-ink-soft">이 시간에 쓸 수 있는 다른 방</p>
           <ul className="mt-2 space-y-1.5">
             {suggestions.map((s) => (
-              <li key={s.room.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                <span className="font-medium">{s.room.name}</span>
+              <li key={s.room.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                <span className="whitespace-nowrap font-medium">{s.room.name}</span>
                 {s.reasons.length > 0 ? (
                   <span className="text-xs text-ink-soft">{s.reasons.join(' · ')}</span>
                 ) : null}

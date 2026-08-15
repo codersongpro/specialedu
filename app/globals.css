@@ -17,7 +17,10 @@
   --color-ok: #17795e;
   --color-ok-soft: #e6f4ef;
 
-  --font-sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  /* --font-pretendard 는 app/fonts.ts 의 next/font/local 이 <html> 에 심어준다.
+     CDN 없이 npm 패키지(pretendard)를 자체 호스팅한다. */
+  --font-sans: var(--font-pretendard), 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui,
+    sans-serif;
 }
 
 :root {

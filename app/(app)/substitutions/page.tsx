@@ -1,3 +1,4 @@
+import { RealtimeRefresh } from '@/components/realtime-refresh'
 import { Badge, Card, EmptyState, PageHeader } from '@/components/ui'
 import { formatKoreanDateWithDay, isoDayOfWeek, todayString } from '@/lib/date'
 import { getCurrentTerm } from '@/lib/data/context'
@@ -109,6 +110,10 @@ export default async function SubstitutionsPage() {
 
   return (
     <>
+      <RealtimeRefresh
+        schoolId={session.school.id}
+        tables={['substitution_assignments', 'absences']}
+      />
       <PageHeader
         title="결보강"
         description="결과를 신청하면 그 시간 수업을 자동으로 찾아 보강 후보를 뽑아 줍니다."
@@ -196,10 +201,10 @@ export default async function SubstitutionsPage() {
             ) : (
               <ul className="space-y-2">
                 {(absences ?? []).slice(0, 8).map((absence) => (
-                  <li key={absence.id} className="flex items-baseline gap-2 text-sm">
+                  <li key={absence.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                     <span className="font-medium">{nameById.get(absence.teacher_id)}</span>
                     <Badge>{REASON_LABEL[absence.reason]}</Badge>
-                    <span className="text-xs text-ink-soft tabular">
+                    <span className="whitespace-nowrap text-xs text-ink-soft tabular">
                       {absence.starts_on === absence.ends_on
                         ? formatKoreanDateWithDay(absence.starts_on)
                         : `${absence.starts_on} ~ ${absence.ends_on}`}
