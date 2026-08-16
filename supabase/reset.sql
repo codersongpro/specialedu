@@ -18,6 +18,7 @@ drop table if exists
   public.ai_cache,
   public.sensitivity_acks,
   public.audit_logs,
+  public.notifications,
   public.pbs_records,
   public.behavior_categories,
   public.budget_expenses,

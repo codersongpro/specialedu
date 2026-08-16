@@ -1,11 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import {
+  getMyNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationItem,
+} from '@/app/actions/notifications'
 import { logout } from '@/app/login/actions'
 import { AppNav } from '@/components/app-nav'
 import { AppMark } from '@/components/brand'
+import { NotificationBell } from '@/components/notification-bell'
 import { ZoneGuard } from '@/components/zone-guard'
+import { createClient } from '@/lib/supabase/client'
 import type { NavCategory } from '@/lib/security/sensitivity'
 
 interface Props {
@@ -13,6 +21,7 @@ interface Props {
   schoolId: string
   schoolName: string
   isDemo: boolean
+  profileId: string
   profileName: string
   roleLabel: string
   children: React.ReactNode
@@ -32,17 +41,58 @@ export function AppShell({
   schoolId,
   schoolName,
   isDemo,
+  profileId,
   profileName,
   roleLabel,
   children,
 }: Props) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   // 다른 화면으로 옮기면 열려 있던 메뉴는 저절로 닫는다
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  // 알림 목록 + Realtime 구독은 여기서 딱 한 번만 한다. 벨 아이콘은
+  // 데스크톱 사이드바·모바일 상단바 두 곳에 동시에 떠 있는데, 각자
+  // 따로 구독하면 같은 채널 토픽을 두 번 subscribe() 하게 돼 오류가
+  // 난다(components/notification-bell.tsx 주석 참고).
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+
+  useEffect(() => {
+    getMyNotifications().then(setNotifications)
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase.channel(`notifications:${profileId}`)
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${profileId}` },
+      () => {
+        getMyNotifications().then(setNotifications)
+      },
+    )
+    channel.subscribe()
+    return () => void supabase.removeChannel(channel)
+  }, [profileId])
+
+  async function openNotification(item: NotificationItem) {
+    if (!item.readAt) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n)),
+      )
+      await markNotificationRead(item.id)
+    }
+    if (item.link) router.push(item.link)
+  }
+
+  async function markAllNotifications() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })))
+    await markAllNotificationsRead()
+  }
 
   // 메뉴가 열려 있는 동안은 뒤 배경이 스크롤되지 않는다 — 네이티브 앱의
   // 바텀시트/모달과 같은 느낌을 준다
@@ -79,9 +129,16 @@ export function AppShell({
 
   const bodyBlock = (
     <>
-      <p className="border-b border-line px-4 py-2.5 text-[15px] text-ink-soft">
-        {profileName} {roleLabel}
-      </p>
+      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+        <p className="min-w-0 truncate text-[15px] text-ink-soft">
+          {profileName} {roleLabel}
+        </p>
+        <NotificationBell
+          items={notifications}
+          onOpenItem={openNotification}
+          onMarkAll={markAllNotifications}
+        />
+      </div>
 
       <AppNav categories={nav} />
 
@@ -110,16 +167,23 @@ export function AppShell({
           <AppMark size={24} />
           <p className="truncate text-[16.5px] font-semibold leading-tight">{schoolName}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-haspopup="true"
-          aria-expanded={open}
-          aria-label="메뉴 열기"
-          className="flex h-11 min-w-[64px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line text-[15px] font-medium"
-        >
-          메뉴
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <NotificationBell
+            items={notifications}
+            onOpenItem={openNotification}
+            onMarkAll={markAllNotifications}
+          />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-haspopup="true"
+            aria-expanded={open}
+            aria-label="메뉴 열기"
+            className="flex h-11 min-w-[64px] items-center justify-center gap-1.5 rounded-lg border border-line text-[15px] font-medium"
+          >
+            메뉴
+          </button>
+        </div>
       </header>
 
       {/* 모바일 전체화면 메뉴 시트 */}

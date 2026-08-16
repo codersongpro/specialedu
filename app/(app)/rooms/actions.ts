@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { findConflicts, hasBlocking } from '@/lib/scheduling/conflicts'
-import { isoDayOfWeek } from '@/lib/date'
+import { formatKoreanDate, isoDayOfWeek } from '@/lib/date'
 import { getCurrentTerm, loadScheduleContext } from '@/lib/data/context'
+import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 
@@ -176,7 +177,7 @@ export async function approveReservation(formData: FormData): Promise<void> {
   if (!id || !['approved', 'rejected'].includes(decision)) return
 
   const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from('room_reservations')
     .update({
       status: decision as 'approved' | 'rejected',
@@ -184,6 +185,8 @@ export async function approveReservation(formData: FormData): Promise<void> {
       approved_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select('requester_id, reserved_date, room_id')
+    .single()
 
   await writeAudit({
     schoolId: session.school.id,
@@ -194,6 +197,17 @@ export async function approveReservation(formData: FormData): Promise<void> {
     targetId: id,
     meta: { decision },
   })
+
+  if (updated) {
+    const { data: room } = await supabase.from('rooms').select('name').eq('id', updated.room_id).maybeSingle()
+    await notify({
+      schoolId: session.school.id,
+      profileId: updated.requester_id,
+      title: decision === 'approved' ? '특별실 예약이 승인되었습니다' : '특별실 예약이 반려되었습니다',
+      body: `${room?.name ?? '특별실'} · ${formatKoreanDate(updated.reserved_date)}`,
+      link: '/rooms',
+    })
+  }
 
   revalidatePath('/rooms')
 }

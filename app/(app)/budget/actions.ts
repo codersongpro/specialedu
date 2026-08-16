@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { extractReceiptFields } from '@/lib/ai/gemini'
+import { formatWon } from '@/lib/format'
+import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -164,7 +166,7 @@ export async function reviewExpense(formData: FormData): Promise<void> {
   const reason = decision === 'rejected' ? String(formData.get('reason') ?? '').slice(0, 300) : null
 
   const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from('budget_expenses')
     .update({
       status: decision,
@@ -173,6 +175,8 @@ export async function reviewExpense(formData: FormData): Promise<void> {
       reject_reason: reason,
     })
     .eq('id', id)
+    .select('requested_by, amount, description')
+    .single()
 
   await writeAudit({
     schoolId: session.school.id,
@@ -182,6 +186,16 @@ export async function reviewExpense(formData: FormData): Promise<void> {
     targetTable: 'budget_expenses',
     targetId: id,
   })
+
+  if (updated) {
+    await notify({
+      schoolId: session.school.id,
+      profileId: updated.requested_by,
+      title: decision === 'approved' ? '지출 신청이 승인되었습니다' : '지출 신청이 반려되었습니다',
+      body: `${formatWon(updated.amount)} · ${updated.description}`,
+      link: '/budget',
+    })
+  }
 
   revalidatePath('/budget')
 }

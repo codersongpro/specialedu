@@ -379,6 +379,17 @@ export type PbsRecordRow = {
   recorded_by: string | null
 }
 
+export type NotificationRow = {
+  id: string
+  school_id: string
+  profile_id: string
+  title: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -432,6 +443,7 @@ export type Database = {
       budget_expenses: Table<BudgetExpenseRow>
       behavior_categories: Table<BehaviorCategoryRow>
       pbs_records: Table<PbsRecordRow>
+      notifications: Table<NotificationRow>
     }
     Views: Empty
     Functions: Empty

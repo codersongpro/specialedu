@@ -24,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       schoolId={school.id}
       schoolName={school.name}
       isDemo={school.is_demo}
+      profileId={session.userId}
       profileName={profile.name}
       roleLabel={ROLE_LABEL[profile.role] ?? ''}
     >

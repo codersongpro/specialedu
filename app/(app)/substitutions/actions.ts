@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { isoDayOfWeek, shiftDays } from '@/lib/date'
+import { formatKoreanDate, isoDayOfWeek, shiftDays } from '@/lib/date'
 import { getCurrentTerm } from '@/lib/data/context'
+import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 
@@ -134,7 +135,7 @@ export async function assignSubstitute(formData: FormData): Promise<void> {
   if (!assignmentId || !teacherId) return
 
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('substitution_assignments')
     .update({
       assigned_teacher_id: teacherId,
@@ -145,6 +146,8 @@ export async function assignSubstitute(formData: FormData): Promise<void> {
       assigned_at: new Date().toISOString(),
     })
     .eq('id', assignmentId)
+    .select('assign_date, period_no')
+    .single()
 
   if (!error) {
     await writeAudit({
@@ -156,6 +159,16 @@ export async function assignSubstitute(formData: FormData): Promise<void> {
       targetId: assignmentId,
       meta: { teacherId, score },
     })
+
+    if (updated) {
+      await notify({
+        schoolId: session.school.id,
+        profileId: teacherId,
+        title: '결보강이 배정되었습니다',
+        body: `${formatKoreanDate(updated.assign_date)} ${updated.period_no}교시`,
+        link: '/substitutions',
+      })
+    }
   }
 
   revalidatePath('/substitutions')
