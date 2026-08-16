@@ -87,6 +87,13 @@ npx supabase db push
 또는 Supabase 대시보드의 SQL Editor 에서 `supabase/migrations/` 의 파일을
 `0001` 부터 순서대로 실행합니다.
 
+**이미 실 데이터가 있는 프로젝트라면 `supabase/schema.sql`을 통째로 다시
+실행하지 마세요.** 그 파일은 맨 앞에서 기존 테이블을 전부 지우고 다시
+만듭니다 — 새 마이그레이션이 나왔을 때는 `supabase/migrations/`에서
+**새로 추가된 파일 하나만** SQL Editor에서 실행하세요. (`schema.sql`은
+`reset.sql`이 실 데이터를 감지하면 자동으로 멈추도록 안전장치가 있지만,
+애초에 이 경로로 쓰지 않는 게 안전합니다.)
+
 ### 4. 데모 데이터 (선택)
 
 로컬에서:
