@@ -168,7 +168,6 @@ export function RoomBoard(props: Props) {
                           <ReservedCell
                             reservation={taken}
                             ctx={ctx}
-                            course={props.course}
                             canCancel={props.me.isAdmin || taken.requesterId === props.me.id}
                           />
                         </td>
@@ -213,12 +212,10 @@ export function RoomBoard(props: Props) {
 function ReservedCell({
   reservation,
   ctx,
-  course,
   canCancel,
 }: {
   reservation: Reservation
   ctx: ScheduleContext
-  course: CourseLevel
   canCancel: boolean
 }) {
   const who =
@@ -233,7 +230,7 @@ function ReservedCell({
     <div
       className={cn(
         'min-h-14 rounded-lg border border-line p-2',
-        pending ? 'border-warn/30 bg-warn-soft' : COURSE_TONE[course],
+        pending ? 'border-warn/30 bg-warn-soft' : COURSE_TONE[reservation.course],
       )}
     >
       <div className="flex items-start justify-between gap-1">
