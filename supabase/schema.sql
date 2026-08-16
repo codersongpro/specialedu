@@ -1188,6 +1188,23 @@ create table public.ai_usage_logs (
 
 create index ai_usage_school_time on public.ai_usage_logs(school_id, created_at desc);
 
+-- 개인 수업 초안: 원본 입력·첨부 자료·API 키는 저장하지 않고 검토된 결과만 보관한다.
+create table public.personal_drafts (
+  id         uuid primary key default gen_random_uuid(),
+  school_id  uuid not null references public.schools(id) on delete cascade,
+  owner_id   uuid not null references public.profiles(id) on delete cascade,
+  tool       text not null check (tool in ('lesson_adapt', 'video_kit')),
+  title      text not null check (char_length(title) <= 120),
+  content    text not null,
+  meta       jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index personal_drafts_owner_updated on public.personal_drafts(owner_id, updated_at desc);
+create trigger personal_drafts_touch before update on public.personal_drafts
+  for each row execute function public.touch_updated_at();
+
 -- -----------------------------------------------------------------------------
 -- 학교 공용 Gemini 키
 -- -----------------------------------------------------------------------------
@@ -1205,6 +1222,7 @@ alter table public.audit_logs        enable row level security;
 alter table public.sensitivity_acks  enable row level security;
 alter table public.ai_cache          enable row level security;
 alter table public.ai_usage_logs     enable row level security;
+alter table public.personal_drafts   enable row level security;
 
 -- 감사로그는 관리자만 읽는다. 쓰기는 서버(service role)만 — 교직원이 자기 기록을
 -- 지울 수 있으면 감사로그의 의미가 없다.
@@ -1223,6 +1241,16 @@ create policy ai_cache_select on public.ai_cache for select
 
 create policy ai_usage_select on public.ai_usage_logs for select
   using (public.same_school(school_id) and (profile_id = auth.uid() or public.is_admin()));
+
+create policy personal_drafts_select_own on public.personal_drafts for select
+  using (owner_id = auth.uid() and public.same_school(school_id));
+create policy personal_drafts_insert_own on public.personal_drafts for insert
+  with check (owner_id = auth.uid() and public.same_school(school_id));
+create policy personal_drafts_update_own on public.personal_drafts for update
+  using (owner_id = auth.uid() and public.same_school(school_id))
+  with check (owner_id = auth.uid() and public.same_school(school_id));
+create policy personal_drafts_delete_own on public.personal_drafts for delete
+  using (owner_id = auth.uid() and public.same_school(school_id));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 0006_realtime.sql

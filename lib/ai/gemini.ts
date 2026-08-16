@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { lessonAdaptPrompt, type LessonAdaptInput } from '@/lib/lesson-adapt/prompt'
+import { videoKitPrompt, type VideoKitInput } from '@/lib/video-kit/prompt'
 
 /**
  * Gemini 호출 — 이 앱에서 Gemini API 를 실제로 부르는 코드가 모여 있다.
@@ -12,33 +13,38 @@ import { lessonAdaptPrompt, type LessonAdaptInput } from '@/lib/lesson-adapt/pro
  */
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+const REQUEST_TIMEOUT_MS = 20_000
+const MAX_ATTEMPTS = 2
 
 async function callGemini(
   apiKey: string,
   parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }>,
 ): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    },
-  )
-
-  if (!res.ok) {
-    throw new Error(`Gemini 호출 실패 (${res.status})`)
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json' } }),
+        },
+      )
+      if (!res.ok) {
+        if (attempt + 1 < MAX_ATTEMPTS && (res.status === 429 || res.status >= 500)) continue
+        throw new Error(`Gemini 호출 실패 (${res.status})`)
+      }
+      const body = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+      }
+      const text = body.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) throw new Error('Gemini 응답을 읽을 수 없습니다')
+      return text
+    } catch (error) {
+      if (attempt + 1 < MAX_ATTEMPTS && error instanceof TypeError) continue
+      throw error
+    }
   }
-
-  const body = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-  }
-  const text = body.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error('Gemini 응답을 읽을 수 없습니다')
-  return text
+  throw new Error('Gemini 호출 실패')
 }
 
 function parseJsonRecord(text: string): Record<string, unknown> {
@@ -180,8 +186,23 @@ ${input.subject ? `교과: ${input.subject}` : ''}
   return queries.slice(0, 5)
 }
 
-export async function generateLessonAdaptation(apiKey: string, input: LessonAdaptInput): Promise<string> {
-  const text = await callGemini(apiKey, [{ text: lessonAdaptPrompt(input) }])
+export async function generateLessonAdaptation(
+  apiKey: string,
+  input: LessonAdaptInput,
+  attachments: Array<{ mimeType: string; data: string }> = [],
+): Promise<string> {
+  const text = await callGemini(apiKey, [
+    { text: lessonAdaptPrompt(input) },
+    ...attachments.map((attachment) => ({ inline_data: { mime_type: attachment.mimeType, data: attachment.data } })),
+  ])
+  const record = parseJsonRecord(text)
+  const result = typeof record.result === 'string' ? record.result.trim() : ''
+  if (!result) throw new Error('Gemini 응답을 읽을 수 없습니다')
+  return result
+}
+
+export async function generateVideoKit(apiKey: string, input: VideoKitInput): Promise<string> {
+  const text = await callGemini(apiKey, [{ text: videoKitPrompt(input) }])
   const record = parseJsonRecord(text)
   const result = typeof record.result === 'string' ? record.result.trim() : ''
   if (!result) throw new Error('Gemini 응답을 읽을 수 없습니다')
