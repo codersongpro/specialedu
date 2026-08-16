@@ -92,7 +92,23 @@ export async function seedDemoSchool(
   // hasDemoSchool), 버튼은 보이는데 눌러도 안 들어가지는 상태가 된다.
   // 학교를 먼저 지우면 최악의 경우에도 "데모 없음"이라는 깨끗한 상태로
   // 끝나 버튼 자체가 안 나온다.
-  const { data: existing } = await db.from('schools').select('id').eq('is_demo', true)
+  const { data: existing } = await db
+    .from('schools')
+    .select('id, gemini_key_enc, gemini_key_hint, youtube_key_enc, youtube_key_hint')
+    .eq('is_demo', true)
+
+  // 학교 공용 AI 키는 지우지 않고 새 데모 학교로 옮겨 심는다.
+  // 데모는 매일 새벽 통째로 다시 만들어지는데, 그때마다 관리자가 등록해 둔
+  // Gemini·유튜브 키까지 날아가면 다음 날 체험하는 사람은 수업 도구함(AI)이
+  // 전부 "키가 없습니다"로 막힌 화면만 보게 된다. 키는 암호문 그대로
+  // 옮기므로 여기서 복호화하지 않는다.
+  const carriedKeys = {
+    gemini_key_enc: existing?.[0]?.gemini_key_enc ?? null,
+    gemini_key_hint: existing?.[0]?.gemini_key_hint ?? null,
+    youtube_key_enc: existing?.[0]?.youtube_key_enc ?? null,
+    youtube_key_hint: existing?.[0]?.youtube_key_hint ?? null,
+  }
+
   for (const school of existing ?? []) {
     // profiles 등 하위 데이터는 on delete cascade 로 함께 지워진다.
     await db.from('schools').delete().eq('id', school.id)
@@ -134,12 +150,25 @@ export async function seedDemoSchool(
   // --- 학교 ----------------------------------------------------------------
   const { data: school, error: schoolError } = await db
     .from('schools')
-    .insert({ name: DEMO_SCHOOL.name, timezone: DEMO_SCHOOL.timezone, is_demo: true })
+    .insert({
+      name: DEMO_SCHOOL.name,
+      timezone: DEMO_SCHOOL.timezone,
+      is_demo: true,
+      ...carriedKeys,
+    })
     .select('id')
     .single()
 
   if (schoolError || !school) throw schoolError ?? new Error('학교를 만들지 못했습니다')
   const schoolId = school.id
+
+  if (carriedKeys.gemini_key_enc || carriedKeys.youtube_key_enc) {
+    const carried = [
+      carriedKeys.gemini_key_enc ? 'Gemini' : null,
+      carriedKeys.youtube_key_enc ? '유튜브' : null,
+    ].filter(Boolean)
+    log(`  이전 데모 학교의 학교 공용 ${carried.join('·')} 키를 이어받았습니다`)
+  }
 
   // --- 부서 ----------------------------------------------------------------
   const { data: departments, error: departmentsError } = await db
