@@ -81,7 +81,7 @@ export const NAV: NavCategory[] = [
     sensitivity: 'external_ai',
     items: [
       { href: '/toolbox/easy-read', label: '쉬운글 안내문' },
-      { href: '/toolbox/media', label: '수업 자료 찾기', planned: true },
+      { href: '/toolbox/media', label: '수업 자료 찾기' },
     ],
   },
   {
