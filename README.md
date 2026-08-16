@@ -176,10 +176,16 @@ npm run build        # 빌드
 npm run typecheck    # 타입 검사
 npm run lint         # 린트
 npm run test         # 단위 테스트
-npm run test:e2e     # 브라우저 테스트
+npm run test:e2e     # 브라우저 테스트 (Playwright)
 npm run db:types     # DB 스키마에서 타입 다시 뽑기
 npm run seed:demo    # 데모 데이터 (SEED_DEMO=true 필요)
 ```
+
+`test:e2e`는 실제 Supabase 백엔드와 시드된 데모 학교(「한빛특수학교」)가
+필요합니다. `.env.local`을 채운 뒤 로컬에서 그대로 돌리면 Playwright가
+`npm run dev`를 직접 띄웁니다. 이미 떠 있는 서버(배포본 등)를 대상으로
+하려면 `E2E_BASE_URL=https://... npm run test:e2e`처럼 주소를 넘기세요.
+테스트 목록은 `tests/e2e/`에 있습니다.
 
 ---
 
