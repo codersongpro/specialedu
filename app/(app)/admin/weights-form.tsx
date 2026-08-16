@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { Button, inputClass } from '@/components/ui'
+import { cn } from '@/lib/cn'
 import type { SubstitutionWeights } from '@/lib/substitution/score'
 import { saveWeights, type WeightsState } from './actions'
 
@@ -41,7 +42,7 @@ export function WeightsForm({
             defaultValue={weights[field.key]}
             min={-100}
             max={100}
-            className={`${inputClass} w-20 text-right tabular`}
+            className={cn(inputClass, 'w-20 text-right tabular')}
           />
         </div>
       ))}
@@ -60,7 +61,7 @@ export function WeightsForm({
           defaultValue={longRunThreshold}
           min={2}
           max={10}
-          className={`${inputClass} w-20 text-right tabular`}
+          className={cn(inputClass, 'w-20 text-right tabular')}
         />
       </div>
 

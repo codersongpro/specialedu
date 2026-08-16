@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { inputClass } from '@/components/ui'
+import { cn } from '@/lib/cn'
 
 export function MonthPicker({ month }: { month: string }) {
   const router = useRouter()
@@ -13,7 +14,7 @@ export function MonthPicker({ month }: { month: string }) {
         type="month"
         value={month}
         onChange={(e) => router.push(`/substitutions/payroll?month=${e.target.value}`)}
-        className={`${inputClass} w-40`}
+        className={cn(inputClass, 'w-40')}
       />
     </label>
   )
