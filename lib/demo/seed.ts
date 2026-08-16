@@ -84,6 +84,7 @@ export async function seedDemoSchool(
   // 되는 상태(체험하기 버튼이 "데모용이 아닙니다"로 막히는 원인)로 영영
   // 남았다. 그래서 auth.users 목록에서 @hanbit.demo 이메일을 직접 찾아
   // 전부 지운다 — profiles 존재 여부와 무관하게 지워야 고아가 남지 않는다.
+  const deleteFailures: string[] = []
   for (let page = 1; ; page += 1) {
     const { data: userPage, error: listError } = await db.auth.admin.listUsers({
       page,
@@ -92,9 +93,17 @@ export async function seedDemoSchool(
     if (listError) throw listError
     const demoUsers = userPage.users.filter((u) => u.email?.endsWith('@hanbit.demo'))
     for (const demoUser of demoUsers) {
-      await db.auth.admin.deleteUser(demoUser.id).catch(() => undefined)
+      const { error: deleteError } = await db.auth.admin.deleteUser(demoUser.id)
+      if (deleteError) deleteFailures.push(`${demoUser.email}: ${deleteError.message}`)
     }
     if (userPage.users.length < 200) break
+  }
+
+  // 삭제가 하나라도 실패한 채로 학교를 지우면, 그 계정은 profiles 만 cascade로
+  // 사라지고 auth.users엔 남는 고아 계정이 다시 생긴다(바로 위 주석이 설명하는
+  // 문제 그 자체). 그래서 전부 지워졌다고 확인되기 전에는 학교를 건드리지 않는다.
+  if (deleteFailures.length > 0) {
+    throw new Error(`기존 데모 계정 정리에 실패했습니다: ${deleteFailures.join('; ')}`)
   }
 
   const { data: existing } = await db.from('schools').select('id').eq('is_demo', true)
