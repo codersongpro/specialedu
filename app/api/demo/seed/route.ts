@@ -7,12 +7,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *   curl -X POST https://<주소>/api/demo/seed -H "Authorization: Bearer <SEED_SECRET>"
  *
  * 로컬에 node 나 supabase CLI 를 깔지 않고도 데모를 띄울 수 있게 열어 둔 길이다.
- * 대신 두 가지를 건다:
- *   - SEED_SECRET 환경변수가 없으면 아예 동작하지 않는다 (기본은 잠김)
- *   - 실제 학교 데이터가 이미 있으면 거부한다
+ * SEED_SECRET 환경변수가 없으면 아예 동작하지 않는다 (기본은 잠김).
  *
- * 두 번째가 중요하다. 이 함수는 기존 데모 학교를 지우고 다시 만드는데,
- * 운영 중인 학교에서 실수로 부르면 안 된다.
+ * 실제 학교가 이미 등록돼 있어도 막지 않는다. seedDemoSchool()이 건드리는
+ * 대상은 정확히 두 가지뿐이다 — 이메일이 @hanbit.demo로 끝나는 auth 계정과
+ * schools.is_demo=true 행(그 school_id로 cascade되는 하위 행들). 둘 다 실제
+ * 학교(청암학교 등)의 school_id와 겹칠 수 없는 구조라, 여러 학교가 이미
+ * 등록된 배포에서 데모를 함께 돌려도 실제 데이터는 손대지 않는다 — RLS의
+ * school_id 격리가 여기서도 그대로 방어선이 된다.
  */
 
 // 시드는 오래 걸린다 (계정 25개 생성 + 여러 번의 삽입)
@@ -33,23 +35,6 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient()
-
-  // 실제 학교가 하나라도 있으면 멈춘다
-  const { data: realSchools } = await admin
-    .from('schools')
-    .select('id, name')
-    .eq('is_demo', false)
-    .limit(1)
-
-  if (realSchools && realSchools.length > 0) {
-    return Response.json(
-      {
-        error: `실제 학교(${realSchools[0]!.name})가 등록돼 있어 데모 시드를 돌리지 않습니다.`,
-        hint: '데모는 별도 프로젝트에서 띄우세요.',
-      },
-      { status: 409 },
-    )
-  }
 
   const lines: string[] = []
 
