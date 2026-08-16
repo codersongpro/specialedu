@@ -2,6 +2,7 @@ import 'server-only'
 
 import { lessonAdaptPrompt, type LessonAdaptInput } from '@/lib/lesson-adapt/prompt'
 import { videoKitPrompt, type VideoKitInput } from '@/lib/video-kit/prompt'
+import { workflowPrompt, type WorkflowTool } from '@/lib/workflow/prompt'
 
 /**
  * Gemini 호출 — 이 앱에서 Gemini API 를 실제로 부르는 코드가 모여 있다.
@@ -203,6 +204,14 @@ export async function generateLessonAdaptation(
 
 export async function generateVideoKit(apiKey: string, input: VideoKitInput): Promise<string> {
   const text = await callGemini(apiKey, [{ text: videoKitPrompt(input) }])
+  const record = parseJsonRecord(text)
+  const result = typeof record.result === 'string' ? record.result.trim() : ''
+  if (!result) throw new Error('Gemini 응답을 읽을 수 없습니다')
+  return result
+}
+
+export async function generateWorkflowDraft(apiKey: string, tool: WorkflowTool, source: string): Promise<string> {
+  const text = await callGemini(apiKey, [{ text: workflowPrompt(tool, source) }])
   const record = parseJsonRecord(text)
   const result = typeof record.result === 'string' ? record.result.trim() : ''
   if (!result) throw new Error('Gemini 응답을 읽을 수 없습니다')

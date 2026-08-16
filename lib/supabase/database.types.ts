@@ -355,7 +355,7 @@ export type PersonalDraftRow = {
   id: string
   school_id: string
   owner_id: string
-  tool: 'lesson_adapt' | 'video_kit'
+  tool: 'lesson_adapt' | 'video_kit' | 'document_checklist' | 'trip_plan' | 'meeting_notes'
   title: string
   content: string
   meta: Record<string, unknown>

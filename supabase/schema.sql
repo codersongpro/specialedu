@@ -1193,7 +1193,7 @@ create table public.personal_drafts (
   id         uuid primary key default gen_random_uuid(),
   school_id  uuid not null references public.schools(id) on delete cascade,
   owner_id   uuid not null references public.profiles(id) on delete cascade,
-  tool       text not null check (tool in ('lesson_adapt', 'video_kit')),
+  tool       text not null check (tool in ('lesson_adapt', 'video_kit', 'document_checklist', 'trip_plan', 'meeting_notes')),
   title      text not null check (char_length(title) <= 120),
   content    text not null,
   meta       jsonb not null default '{}'::jsonb,

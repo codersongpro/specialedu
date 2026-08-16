@@ -84,7 +84,8 @@ export const NAV: NavCategory[] = [
       { href: '/toolbox/media', label: '수업 자료 찾기' },
       { href: '/toolbox/lesson-adapt', label: '수준별 수업 변환기' },
       { href: '/toolbox/video-kit', label: '영상 수업 꾸러미' },
-      { href: '/toolbox/drafts', label: '내 수업 초안' },
+      { href: '/toolbox/drafts', label: '내 AI 초안' },
+      { href: '/toolbox/automation', label: '업무 자동화' },
     ],
   },
   {
