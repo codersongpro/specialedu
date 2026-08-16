@@ -1,6 +1,7 @@
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { getCurrentTerm, loadScheduleContext, periodsFor } from '@/lib/data/context'
 import { todayString } from '@/lib/date'
+import { sortClassesByCourseGrade } from '@/lib/school/class-order'
 import { formatSpan } from '@/lib/scheduling/time'
 import { COURSE_LABEL, type CourseLevel } from '@/lib/scheduling/types'
 import { createClient, requireSession } from '@/lib/supabase/server'
@@ -74,7 +75,11 @@ export default async function TimetablePage({
       />
 
       <TimetableFilter
-        classes={[...ctx.classes.values()].map((c) => ({ id: c.id, name: c.name }))}
+        classes={sortClassesByCourseGrade([...ctx.classes.values()]).map((c) => ({
+          id: c.id,
+          name: c.name,
+          course: c.course,
+        }))}
         teachers={profiles ?? []}
         classId={classId}
         teacherId={classId ? undefined : teacherId}

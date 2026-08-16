@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Field, inputClass } from '@/components/ui'
+import { COURSE_LABEL, type CourseLevel } from '@/lib/scheduling/types'
 
 export function TimetableFilter({
   classes,
@@ -9,12 +10,21 @@ export function TimetableFilter({
   classId,
   teacherId,
 }: {
-  classes: Array<{ id: string; name: string }>
+  classes: Array<{ id: string; name: string; course: CourseLevel }>
   teachers: Array<{ id: string; name: string }>
   classId?: string
   teacherId?: string
 }) {
   const router = useRouter()
+
+  // classes 는 이미 초등→중학→고등→전공과 순으로 정렬돼 들어온다
+  // (lib/school/class-order.ts). 여기서는 그 순서를 유지한 채 과정별로만 묶는다.
+  const classesByCourse = new Map<CourseLevel, typeof classes>()
+  for (const c of classes) {
+    const group = classesByCourse.get(c.course) ?? []
+    group.push(c)
+    classesByCourse.set(c.course, group)
+  }
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 sm:max-w-lg">
@@ -46,10 +56,14 @@ export function TimetableFilter({
           className={inputClass}
         >
           <option value="">고르세요</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
+          {[...classesByCourse.entries()].map(([course, group]) => (
+            <optgroup key={course} label={COURSE_LABEL[course]}>
+              {group.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </Field>
