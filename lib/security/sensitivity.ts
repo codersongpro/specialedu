@@ -72,7 +72,7 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/support/pbs', label: 'PBS 기록' },
       { href: '/support/iep', label: 'IEP 목표', planned: true },
-      { href: '/support/safety', label: '안전 프로토콜', planned: true },
+      { href: '/support/safety', label: '안전 프로토콜' },
     ],
   },
   {

@@ -71,6 +71,8 @@ export const AUDIT_ACTIONS = {
   budgetExpenseReject: 'budget_expense.reject',
   pbsRecordCreate: 'pbs_record.create',
   pbsRecordView: 'pbs_record.view',
+  safetyProtocolCreate: 'safety_protocol.create',
+  safetyProtocolView: 'safety_protocol.view',
   aiRequest: 'ai.request',
   exportDownload: 'export.download',
   platformLogin: 'platform.login',

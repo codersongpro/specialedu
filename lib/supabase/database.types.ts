@@ -379,6 +379,19 @@ export type PbsRecordRow = {
   recorded_by: string | null
 }
 
+export type SafetyCategory = 'seizure' | 'allergy' | 'dysphagia' | 'other'
+
+export type SafetyProtocolRow = {
+  id: string
+  school_id: string
+  student_id: string
+  category: SafetyCategory
+  title: string
+  content_enc: string
+  created_by: string | null
+  updated_at: string
+}
+
 export type NotificationRow = {
   id: string
   school_id: string
@@ -444,6 +457,7 @@ export type Database = {
       behavior_categories: Table<BehaviorCategoryRow>
       pbs_records: Table<PbsRecordRow>
       notifications: Table<NotificationRow>
+      safety_protocols: Table<SafetyProtocolRow>
     }
     Views: Empty
     Functions: Empty
