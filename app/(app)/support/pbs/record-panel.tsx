@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react'
 import { Button, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { COURSE_LABEL, type CourseLevel } from '@/lib/scheduling/types'
 import { recordBehavior, saveDetail } from './actions'
 
 interface ClassInfo {
   id: string
   name: string
+  course: CourseLevel
 }
 interface StudentInfo {
   id: string
@@ -75,25 +77,34 @@ export function RecordPanel({
     })
   }
 
+  const classesByCourse = new Map<CourseLevel, ClassInfo[]>()
+  for (const c of classes) {
+    const list = classesByCourse.get(c.course) ?? []
+    list.push(c)
+    classesByCourse.set(c.course, list)
+  }
+
   return (
     <div>
-      <div className="flex flex-wrap gap-1">
-        {classes.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => {
-              setClassId(c.id)
-              setStudentId('')
-            }}
-            className={cn(
-              'rounded-lg px-3 py-1.5 text-sm transition-colors',
-              c.id === classId ? 'bg-brand-soft font-medium text-brand' : 'text-ink-soft hover:bg-canvas',
-            )}
-          >
-            {c.name}
-          </button>
-        ))}
+      <div className="max-w-xs">
+        <select
+          value={classId}
+          onChange={(e) => {
+            setClassId(e.target.value)
+            setStudentId('')
+          }}
+          className={inputClass}
+        >
+          {[...classesByCourse.entries()].map(([course, group]) => (
+            <optgroup key={course} label={COURSE_LABEL[course]}>
+              {group.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">

@@ -38,6 +38,8 @@ export type SchoolRow = {
   allow_free_text_ai: boolean
   gemini_key_enc: string | null
   gemini_key_hint: string | null
+  youtube_key_enc: string | null
+  youtube_key_hint: string | null
 }
 
 export type ProfileRow = {
@@ -50,6 +52,8 @@ export type ProfileRow = {
   work_days: number[]
   gemini_key_enc: string | null
   gemini_key_hint: string | null
+  youtube_key_enc: string | null
+  youtube_key_hint: string | null
   calendar_token: string
   is_active: boolean
 }

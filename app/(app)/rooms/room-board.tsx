@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { formatKoreanDateWithDay, shiftDays, todayString } from '@/lib/date'
 import { findConflicts, hasBlocking } from '@/lib/scheduling/conflicts'
 import { recommendRooms } from '@/lib/scheduling/recommend'
+import { COURSE_TONE } from '@/lib/scheduling/course-colors'
 import { formatSpan } from '@/lib/scheduling/time'
 import {
   BOOKING_KIND_LABEL,
@@ -114,7 +115,7 @@ export function RoomBoard(props: Props) {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm transition-colors',
                 course === props.course
-                  ? 'bg-brand-soft font-medium text-brand'
+                  ? cn(COURSE_TONE[course], 'font-medium')
                   : 'text-ink-soft hover:bg-canvas',
               )}
             >
@@ -167,6 +168,7 @@ export function RoomBoard(props: Props) {
                           <ReservedCell
                             reservation={taken}
                             ctx={ctx}
+                            course={props.course}
                             canCancel={props.me.isAdmin || taken.requesterId === props.me.id}
                           />
                         </td>
@@ -211,10 +213,12 @@ export function RoomBoard(props: Props) {
 function ReservedCell({
   reservation,
   ctx,
+  course,
   canCancel,
 }: {
   reservation: Reservation
   ctx: ScheduleContext
+  course: CourseLevel
   canCancel: boolean
 }) {
   const who =
@@ -228,8 +232,8 @@ function ReservedCell({
   return (
     <div
       className={cn(
-        'min-h-14 rounded-lg border p-2',
-        pending ? 'border-warn/30 bg-warn-soft' : 'border-line bg-canvas',
+        'min-h-14 rounded-lg border border-line p-2',
+        pending ? 'border-warn/30 bg-warn-soft' : COURSE_TONE[course],
       )}
     >
       <div className="flex items-start justify-between gap-1">

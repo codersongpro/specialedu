@@ -241,3 +241,29 @@ export async function saveSchoolKey(
   revalidatePath('/admin')
   return { ok: true }
 }
+
+const SchoolYoutubeKeyInput = z.object({ apiKey: z.string().min(20).max(200) })
+
+export async function saveSchoolYoutubeKey(
+  _prev: WeightsState,
+  formData: FormData,
+): Promise<WeightsState> {
+  const session = await requireSession()
+  if (!isAdmin(session.profile)) return { error: '권한이 없습니다' }
+
+  const parsed = SchoolYoutubeKeyInput.safeParse({ apiKey: formData.get('apiKey') })
+  if (!parsed.success) return { error: '키를 확인하세요' }
+
+  const apiKey = parsed.data.apiKey.trim()
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('schools')
+    .update({ youtube_key_enc: encryptSecret(apiKey), youtube_key_hint: keyHint(apiKey) })
+    .eq('id', session.school.id)
+
+  if (error) return { error: '저장하지 못했습니다' }
+
+  revalidatePath('/admin')
+  return { ok: true }
+}

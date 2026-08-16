@@ -14,6 +14,7 @@ import {
   weekDates,
   weekStart,
 } from '@/lib/date'
+import { COURSE_TONE, NEUTRAL_TONE } from '@/lib/scheduling/course-colors'
 import { deleteEvent } from './actions'
 
 export interface CalendarEvent {
@@ -44,16 +45,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: '기타',
   room_reservation: '특별실 예약',
 }
-
-// 과정(초·중·고·전공과)마다 다른 색으로 보이게 한다. 전교·부서처럼 특정
-// 과정에 속하지 않는 일정은 중립색(NEUTRAL_TONE)을 쓴다.
-const COURSE_TONE: Record<string, string> = {
-  elementary: 'bg-ok-soft text-ok',
-  middle: 'bg-cyan-100 text-cyan-700',
-  high: 'bg-brand-soft text-brand',
-  vocational: 'bg-violet-100 text-violet-700',
-}
-const NEUTRAL_TONE = 'bg-canvas text-ink-soft'
 
 const SCOPE_LABEL: Record<string, string> = {
   school: '전교',

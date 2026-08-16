@@ -56,11 +56,6 @@ export async function searchMedia(input: SearchInputType): Promise<MediaSearchRe
     return { videos: cached.result as VideoResult[], cached: true }
   }
 
-  const youtubeKey = process.env.YOUTUBE_API_KEY
-  if (!youtubeKey) {
-    return { error: '유튜브 검색 키가 설정되지 않았습니다. 관리자에게 문의하세요.' }
-  }
-
   const keySource: 'personal' | 'school' | null = session.profile.gemini_key_enc
     ? 'personal'
     : session.school.gemini_key_enc
@@ -71,8 +66,17 @@ export async function searchMedia(input: SearchInputType): Promise<MediaSearchRe
     return { error: '등록된 Gemini 키가 없습니다. 내 설정 또는 학교 관리에서 키를 등록해 주세요.' }
   }
 
+  // 유튜브 키도 Gemini와 같은 방식(개인 > 학교 공용)으로 고른다.
+  // 서버 환경변수로 전체 배포가 공유하는 키는 두지 않는다 — 여러 학교가
+  // 한 배포를 같이 쓰면 한 사람의 키가 다른 학교까지 쓰이게 되기 때문이다.
+  const encryptedYoutubeKey = session.profile.youtube_key_enc ?? session.school.youtube_key_enc
+  if (!encryptedYoutubeKey) {
+    return { error: '등록된 유튜브 검색 키가 없습니다. 내 설정 또는 학교 관리에서 키를 등록해 주세요.' }
+  }
+
   try {
     const apiKey = decryptSecret(encryptedKey)
+    const youtubeKey = decryptSecret(encryptedYoutubeKey)
     const level: EasyReadLevel = data.level
     const queries = await generateSearchTerms(apiKey, {
       course: COURSE_LABEL[data.course] ?? data.course,

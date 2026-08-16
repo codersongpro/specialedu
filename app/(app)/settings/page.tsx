@@ -1,8 +1,9 @@
 import { headers } from 'next/headers'
 import { Button, Card, PageHeader } from '@/components/ui'
 import { requireSession } from '@/lib/supabase/server'
-import { removePersonalKey, rotateCalendarToken } from './actions'
+import { removePersonalKey, removePersonalYoutubeKey, rotateCalendarToken } from './actions'
 import { KeyForm } from './key-form'
+import { YoutubeKeyForm } from './youtube-key-form'
 
 export default async function SettingsPage() {
   const session = await requireSession()
@@ -88,6 +89,33 @@ export default async function SettingsPage() {
             무료 키는 전송한 내용이 Google의 모델 학습에 쓰일 수 있습니다. 그래서 도구함에서는
             학생 이름·연락처를 자동으로 가려서 보내고, 보내기 전에 무엇이 나가는지 보여 줍니다.
           </p>
+        </Card>
+
+        <Card className="p-5 lg:col-span-2">
+          <h2 className="text-sm font-semibold">유튜브 검색 키</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+            &ldquo;수업 자료 찾기&rdquo;에서 쓰는 키입니다. 학교 공용 키가 등록돼 있으면 따로
+            넣지 않아도 됩니다. 이 키는 오직 이 계정에서만 쓰이고 다른 학교와는 공유되지
+            않습니다. Google Cloud Console에서 YouTube Data API v3 키를 무료로 발급받을 수
+            있습니다.
+          </p>
+
+          {session.profile.youtube_key_hint ? (
+            <div className="mt-4 flex items-center gap-3">
+              <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
+                {session.profile.youtube_key_hint}
+              </code>
+              <form action={removePersonalYoutubeKey}>
+                <Button variant="secondary" type="submit">
+                  지우기
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <div className="mt-4 max-w-md">
+              <YoutubeKeyForm />
+            </div>
+          )}
         </Card>
       </div>
     </>

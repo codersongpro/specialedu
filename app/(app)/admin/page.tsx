@@ -9,6 +9,7 @@ import { toggleFreeTextAi } from './actions'
 import { InviteForm } from './invite-form'
 import { PeriodsForm } from './periods-form'
 import { SchoolKeyForm } from './school-key-form'
+import { SchoolYoutubeKeyForm } from './school-youtube-key-form'
 import { WeightsForm } from './weights-form'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -160,6 +161,25 @@ export default async function AdminPage() {
           ) : null}
           <div className="mt-4 max-w-sm">
             <SchoolKeyForm hasKey={Boolean(session.school.gemini_key_hint)} />
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold">학교 공용 유튜브 검색 키</h2>
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+            여기에 키를 넣어 두면 전 교직원이 수업 도구함의 &ldquo;수업 자료 찾기&rdquo;를 바로 쓸 수
+            있습니다. 이 키는 학교별로 따로 저장돼 다른 학교와 공유되지 않습니다. 개인 설정에
+            등록한 키가 있으면 그 키를 우선 씁니다.
+          </p>
+          {session.school.youtube_key_hint ? (
+            <p className="mt-3">
+              <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
+                {session.school.youtube_key_hint}
+              </code>
+            </p>
+          ) : null}
+          <div className="mt-4 max-w-sm">
+            <SchoolYoutubeKeyForm hasKey={Boolean(session.school.youtube_key_hint)} />
           </div>
         </Card>
 

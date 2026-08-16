@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Button, EmptyState, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
+import { COURSE_LABEL, type CourseLevel } from '@/lib/scheduling/types'
 import type { IepArea } from '@/lib/supabase/database.types'
 import { createGoal } from './actions'
 import { GoalCard, type GoalItem } from './goal-card'
@@ -13,6 +14,7 @@ export type { GoalItem } from './goal-card'
 export interface ClassInfo {
   id: string
   name: string
+  course: CourseLevel
 }
 export interface StudentInfo {
   id: string
@@ -38,28 +40,37 @@ export function GoalPanel({
     .filter((g) => g.studentId === studentId)
     .sort((a, b) => (a.status === b.status ? 0 : a.status === 'active' ? -1 : 1))
 
+  const classesByCourse = new Map<CourseLevel, ClassInfo[]>()
+  for (const c of classes) {
+    const list = classesByCourse.get(c.course) ?? []
+    list.push(c)
+    classesByCourse.set(c.course, list)
+  }
+
   return (
     <div>
       <div className="rounded-[14px] border border-line bg-surface p-5">
         <h2 className="text-sm font-semibold">학생 고르기</h2>
-        <div className="mt-3 flex flex-wrap gap-1">
-          {classes.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => {
-                setClassId(c.id)
-                setStudentId('')
-                setFormOpen(false)
-              }}
-              className={cn(
-                'rounded-lg px-3 py-1.5 text-sm transition-colors',
-                c.id === classId ? 'bg-brand-soft font-medium text-brand' : 'text-ink-soft hover:bg-canvas',
-              )}
-            >
-              {c.name}
-            </button>
-          ))}
+        <div className="mt-3 max-w-xs">
+          <select
+            value={classId}
+            onChange={(e) => {
+              setClassId(e.target.value)
+              setStudentId('')
+              setFormOpen(false)
+            }}
+            className={inputClass}
+          >
+            {[...classesByCourse.entries()].map(([course, group]) => (
+              <optgroup key={course} label={COURSE_LABEL[course]}>
+                {group.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">

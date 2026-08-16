@@ -9,7 +9,7 @@
 -- 객체를 전부 지우고 처음부터 다시 만듭니다 (supabase/reset.sql 내용).
 -- 실 데이터가 있는 학교 DB에서는 절대 실행하지 마세요.
 --
--- 만들어진 시각: 2026-08-16 (0012_iep 추가)
+-- 만들어진 시각: 2026-08-16 (0013_youtube_key 추가)
 -- =============================================================================
 
 
@@ -1681,3 +1681,33 @@ create policy iep_progress_update on public.iep_progress for update
   with check (public.same_school(school_id));
 create policy iep_progress_delete on public.iep_progress for delete
   using (public.same_school(school_id) and (recorded_by = auth.uid() or public.is_admin()));
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0013_youtube_key.sql
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- =============================================================================
+-- 0013_youtube_key — 유튜브 검색 키를 학교별·개인별로 분리
+--
+-- 지금까지 "수업 자료 찾기"(유튜브 검색)는 서버 환경변수 YOUTUBE_API_KEY
+-- 하나를 배포 전체가 공유했다. Gemini 키는 이미 학교 공용(schools) +
+-- 개인(profiles) 두 층으로 나뉘어 있는데 유튜브 키만 그렇지 않았던 것 —
+-- 여러 학교가 한 배포를 같이 쓰면 한 사람이 등록한 키를 다른 학교
+-- 교직원까지 전부 나눠 쓰게 되는 구조였다. Gemini와 똑같은 방식으로
+-- 맞춘다: 학교 공용 키를 기본으로 쓰고, 개인 키가 있으면 그걸 우선한다.
+-- =============================================================================
+
+alter table public.schools
+  add column youtube_key_enc  text,
+  add column youtube_key_hint text;
+
+comment on column public.schools.youtube_key_enc is
+  'AES-256-GCM 암호문. 복호화 키는 서버 환경변수 GEMINI_KEY_ENCRYPTION_KEY(재사용).';
+
+alter table public.profiles
+  add column youtube_key_enc  text,
+  add column youtube_key_hint text;
+
+comment on column public.profiles.youtube_key_enc is
+  'AES-256-GCM 암호문. 개인 키 — 있으면 학교 공용보다 우선.';

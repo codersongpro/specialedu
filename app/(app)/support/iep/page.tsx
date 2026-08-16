@@ -1,5 +1,6 @@
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { groupProgressByGoal, progressTrend } from '@/lib/iep/progress'
+import { sortClassesByCourseGrade } from '@/lib/school/class-order'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
@@ -13,9 +14,8 @@ export default async function IepPage() {
     await Promise.all([
       supabase
         .from('classes')
-        .select('id, name')
-        .eq('school_id', session.school.id)
-        .order('grade'),
+        .select('id, name, course, grade')
+        .eq('school_id', session.school.id),
       supabase
         .from('students')
         .select('id, display_name, class_id')
@@ -95,7 +95,11 @@ export default async function IepPage() {
     }
   })
 
-  const classInfos: ClassInfo[] = (classes ?? []).map((c) => ({ id: c.id, name: c.name }))
+  const classInfos: ClassInfo[] = sortClassesByCourseGrade(classes ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    course: c.course,
+  }))
   const studentInfos: StudentInfo[] = (students ?? []).map((s) => ({
     id: s.id,
     displayName: s.display_name,

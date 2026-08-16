@@ -2,6 +2,7 @@ import { format, subWeeks } from 'date-fns'
 import { RealtimeRefresh } from '@/components/realtime-refresh'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { formatKoreanDateWithDay, shiftDays, toDateString, weekStart } from '@/lib/date'
+import { sortClassesByCourseGrade } from '@/lib/school/class-order'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
 import { createClient, requireSession } from '@/lib/supabase/server'
@@ -17,9 +18,8 @@ export default async function PbsPage() {
     await Promise.all([
       supabase
         .from('classes')
-        .select('id, name')
-        .eq('school_id', session.school.id)
-        .order('grade'),
+        .select('id, name, course, grade')
+        .eq('school_id', session.school.id),
       supabase
         .from('students')
         .select('id, display_name, class_id')
@@ -103,7 +103,7 @@ export default async function PbsPage() {
           ) : (
             <div className="mt-3">
               <RecordPanel
-                classes={classes ?? []}
+                classes={sortClassesByCourseGrade(classes ?? [])}
                 students={(students ?? []).map((s) => ({
                   id: s.id,
                   displayName: s.display_name,
