@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { ALL_DEMO_EMAILS, DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo/seed-data'
+import { ADMIN_DEMO_EMAILS, DEMO_ACCOUNTS, DEMO_PASSWORD, TEACHER_DEMO_EMAILS } from '@/lib/demo/seed-data'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { isPlatformAdminEmail } from '@/lib/security/platform'
 import { createClient } from '@/lib/supabase/server'
@@ -140,15 +140,21 @@ export async function demoLogin(formData: FormData): Promise<void> {
 }
 
 /**
- * 체험하기 — 역할을 고르지 않고 버튼 하나로 바로 들어간다.
+ * 체험하기 — 역할군만 고르고 계정은 무작위로 들어간다.
  *
- * 25개 데모 계정 중 하나를 무작위로 골라 로그인시킨다. 계정을 넓게
- * 흩어 놓는 이유는 여러 사람이 동시에 이 버튼을 눌러도 서로 다른 계정으로
- * 들어가게 하기 위해서다 — 그래야 같은 학교 데이터를 실시간으로 함께
- * 편집하는 모습(Realtime)을 자연스럽게 볼 수 있다. 계정 하나에 몰리면
- * 여러 사람이 한 세션을 나눠 쓰는 꼴이 되어 체감이 이상해진다.
+ * 관리자용·일반 교사용 두 버튼으로 나눴다. 완전 무작위(25개 계정 아무거나)로
+ * 두면 "지금 내가 뭘로 들어왔는지" 헷갈려하는 사람이 있어서, 최소한
+ * 관리자 화면을 볼지 일반 교사 화면을 볼지는 고르게 한다. 각 풀 안에서는
+ * 여전히 무작위로 고른다 — 여러 사람이 같은 버튼을 동시에 눌러도 서로
+ * 다른 계정으로 들어가야 같은 학교 데이터를 실시간으로 함께 편집하는
+ * 모습(Realtime)을 자연스럽게 볼 수 있기 때문이다.
  */
-export async function tryItNow(): Promise<void> {
-  const email = ALL_DEMO_EMAILS[Math.floor(Math.random() * ALL_DEMO_EMAILS.length)]!
-  await signInToDemo(email, 'try_it_now')
+export async function tryItNowAdmin(): Promise<void> {
+  const email = ADMIN_DEMO_EMAILS[Math.floor(Math.random() * ADMIN_DEMO_EMAILS.length)]!
+  await signInToDemo(email, 'try_it_now_admin')
+}
+
+export async function tryItNowTeacher(): Promise<void> {
+  const email = TEACHER_DEMO_EMAILS[Math.floor(Math.random() * TEACHER_DEMO_EMAILS.length)]!
+  await signInToDemo(email, 'try_it_now_teacher')
 }

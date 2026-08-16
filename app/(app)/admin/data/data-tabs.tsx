@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button, EmptyState, Field, inputClass } from '@/components/ui'
+import { Modal } from '@/components/modal'
 import { cn } from '@/lib/cn'
 import {
   deleteClass,
@@ -127,28 +128,32 @@ function staffLabel(staff: StaffOption[], id: string | null): string {
 
 // --- 부서 -------------------------------------------------------------------
 function DepartmentPanel({ rows, staff }: { rows: DepartmentRow[]; staff: StaffOption[] }) {
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [headId, setHeadId] = useState('')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function edit(row: DepartmentRow) {
-    setEditingId(row.id)
-    setName(row.name)
-    setHeadId(row.headId ?? '')
-  }
-  function reset() {
+  function openCreate() {
     setEditingId(null)
     setName('')
     setHeadId('')
     setError(null)
+    setOpen(true)
+  }
+  function openEdit(row: DepartmentRow) {
+    setEditingId(row.id)
+    setName(row.name)
+    setHeadId(row.headId ?? '')
+    setError(null)
+    setOpen(true)
   }
   function submit() {
     startTransition(async () => {
       const result = await saveDepartment(editingId, { name, headId: headId || null })
       if (result.error) setError(result.error)
-      else reset()
+      else setOpen(false)
     })
   }
   function remove(id: string) {
@@ -159,30 +164,29 @@ function DepartmentPanel({ rows, staff }: { rows: DepartmentRow[]; staff: StaffO
 
   return (
     <div>
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="이름" htmlFor="dept-name">
-          <input id="dept-name" value={name} onChange={(e) => setName(e.target.value)} className={cn(inputClass, 'w-40')} />
-        </Field>
-        <Field label="부서장" htmlFor="dept-head" hint="선택 사항">
-          <select id="dept-head" value={headId} onChange={(e) => setHeadId(e.target.value)} className={cn(inputClass, 'w-40')}>
-            <option value="">없음</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Button onClick={submit} disabled={pending || !name.trim()}>
-          {editingId ? '수정 저장' : '추가'}
-        </Button>
-        {editingId ? (
-          <Button variant="secondary" onClick={reset}>
-            취소
+      <Button onClick={openCreate}>부서 추가</Button>
+
+      <Modal open={open} onClose={() => setOpen(false)} title={editingId ? '부서 수정' : '부서 추가'}>
+        <div className="space-y-3">
+          <Field label="이름" htmlFor="dept-name">
+            <input id="dept-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="부서장" htmlFor="dept-head" hint="선택 사항">
+            <select id="dept-head" value={headId} onChange={(e) => setHeadId(e.target.value)} className={inputClass}>
+              <option value="">없음</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {error ? <p className="text-[13.5px] text-danger">{error}</p> : null}
+          <Button onClick={submit} disabled={pending || !name.trim()} className="w-full">
+            {editingId ? '수정 저장' : '추가'}
           </Button>
-        ) : null}
-      </div>
-      {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+        </div>
+      </Modal>
 
       <ul className="mt-4 divide-y divide-line">
         {rows.length === 0 ? <EmptyState title="등록된 부서가 없습니다" /> : null}
@@ -191,7 +195,7 @@ function DepartmentPanel({ rows, staff }: { rows: DepartmentRow[]; staff: StaffO
             <span className="font-medium">{row.name}</span>
             <span className="text-[13.5px] text-ink-soft">부서장: {staffLabel(staff, row.headId)}</span>
             <div className="ml-auto flex gap-2">
-              <button type="button" onClick={() => edit(row)} className="text-[13.5px] text-brand underline">
+              <button type="button" onClick={() => openEdit(row)} className="text-[13.5px] text-brand underline">
                 수정
               </button>
               <button type="button" onClick={() => remove(row.id)} className="text-[13.5px] text-ink-soft underline hover:text-danger">
@@ -207,21 +211,29 @@ function DepartmentPanel({ rows, staff }: { rows: DepartmentRow[]; staff: StaffO
 
 // --- 교과 -------------------------------------------------------------------
 function SubjectPanel({ rows }: { rows: SubjectRow[] }) {
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function reset() {
+  function openCreate() {
     setEditingId(null)
     setName('')
     setError(null)
+    setOpen(true)
+  }
+  function openEdit(row: SubjectRow) {
+    setEditingId(row.id)
+    setName(row.name)
+    setError(null)
+    setOpen(true)
   }
   function submit() {
     startTransition(async () => {
       const result = await saveSubject(editingId, { name })
       if (result.error) setError(result.error)
-      else reset()
+      else setOpen(false)
     })
   }
   function remove(id: string) {
@@ -232,34 +244,26 @@ function SubjectPanel({ rows }: { rows: SubjectRow[] }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="이름" htmlFor="subject-name">
-          <input id="subject-name" value={name} onChange={(e) => setName(e.target.value)} className={cn(inputClass, 'w-40')} />
-        </Field>
-        <Button onClick={submit} disabled={pending || !name.trim()}>
-          {editingId ? '수정 저장' : '추가'}
-        </Button>
-        {editingId ? (
-          <Button variant="secondary" onClick={reset}>
-            취소
+      <Button onClick={openCreate}>교과 추가</Button>
+
+      <Modal open={open} onClose={() => setOpen(false)} title={editingId ? '교과 수정' : '교과 추가'}>
+        <div className="space-y-3">
+          <Field label="이름" htmlFor="subject-name">
+            <input id="subject-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </Field>
+          {error ? <p className="text-[13.5px] text-danger">{error}</p> : null}
+          <Button onClick={submit} disabled={pending || !name.trim()} className="w-full">
+            {editingId ? '수정 저장' : '추가'}
           </Button>
-        ) : null}
-      </div>
-      {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+        </div>
+      </Modal>
 
       <ul className="mt-4 flex flex-wrap gap-2">
         {rows.length === 0 ? <EmptyState title="등록된 교과가 없습니다" /> : null}
         {rows.map((row) => (
           <li key={row.id} className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[14px]">
             {row.name}
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(row.id)
-                setName(row.name)
-              }}
-              className="text-brand underline"
-            >
+            <button type="button" onClick={() => openEdit(row)} className="text-brand underline">
               수정
             </button>
             <button type="button" onClick={() => remove(row.id)} className="text-ink-soft underline hover:text-danger">
@@ -274,6 +278,7 @@ function SubjectPanel({ rows }: { rows: SubjectRow[] }) {
 
 // --- 학급 -------------------------------------------------------------------
 function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] }) {
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [course, setCourse] = useState('elementary')
   const [grade, setGrade] = useState(1)
@@ -284,16 +289,7 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function edit(row: ClassRow) {
-    setEditingId(row.id)
-    setCourse(row.course)
-    setGrade(row.grade)
-    setName(row.name)
-    setHomeroomTeacherId(row.homeroomTeacherId ?? '')
-    setAssistantTeacherId(row.assistantTeacherId ?? '')
-    setStudentCount(row.studentCount)
-  }
-  function reset() {
+  function openCreate() {
     setEditingId(null)
     setCourse('elementary')
     setGrade(1)
@@ -302,6 +298,18 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
     setAssistantTeacherId('')
     setStudentCount(0)
     setError(null)
+    setOpen(true)
+  }
+  function openEdit(row: ClassRow) {
+    setEditingId(row.id)
+    setCourse(row.course)
+    setGrade(row.grade)
+    setName(row.name)
+    setHomeroomTeacherId(row.homeroomTeacherId ?? '')
+    setAssistantTeacherId(row.assistantTeacherId ?? '')
+    setStudentCount(row.studentCount)
+    setError(null)
+    setOpen(true)
   }
   function submit() {
     startTransition(async () => {
@@ -314,7 +322,7 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
         studentCount,
       })
       if (result.error) setError(result.error)
-      else reset()
+      else setOpen(false)
     })
   }
   function remove(id: string) {
@@ -326,84 +334,86 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
 
   return (
     <div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="과정" htmlFor="class-course">
-          <select id="class-course" value={course} onChange={(e) => setCourse(e.target.value)} className={inputClass}>
-            {COURSES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="학년" htmlFor="class-grade">
-          <input
-            id="class-grade"
-            type="number"
-            min={1}
-            max={6}
-            value={grade}
-            onChange={(e) => setGrade(Number(e.target.value))}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="이름" htmlFor="class-name" hint="예: 고3-1">
-          <input id="class-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="담임" htmlFor="class-homeroom" hint="선택 사항">
-          <select
-            id="class-homeroom"
-            value={homeroomTeacherId}
-            onChange={(e) => setHomeroomTeacherId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">없음</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="부담임" htmlFor="class-assistant" hint="선택 사항">
-          <select
-            id="class-assistant"
-            value={assistantTeacherId}
-            onChange={(e) => setAssistantTeacherId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">없음</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="학생 수" htmlFor="class-count" hint="특별실 추천 계산에 쓰입니다">
-          <input
-            id="class-count"
-            type="number"
-            min={0}
-            max={60}
-            value={studentCount}
-            onChange={(e) => setStudentCount(Number(e.target.value))}
-            className={inputClass}
-          />
-        </Field>
-      </div>
+      <Button onClick={openCreate}>학급 추가</Button>
 
-      <div className="mt-2 flex gap-2">
-        <Button onClick={submit} disabled={pending || !name.trim()}>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editingId ? '학급 수정' : '학급 추가'}
+        maxWidthClassName="max-w-lg"
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="과정" htmlFor="class-course">
+            <select id="class-course" value={course} onChange={(e) => setCourse(e.target.value)} className={inputClass}>
+              {COURSES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="학년" htmlFor="class-grade">
+            <input
+              id="class-grade"
+              type="number"
+              min={1}
+              max={6}
+              value={grade}
+              onChange={(e) => setGrade(Number(e.target.value))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="이름" htmlFor="class-name" hint="예: 고3-1">
+            <input id="class-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="학생 수" htmlFor="class-count" hint="특별실 추천 계산에 쓰입니다">
+            <input
+              id="class-count"
+              type="number"
+              min={0}
+              max={60}
+              value={studentCount}
+              onChange={(e) => setStudentCount(Number(e.target.value))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="담임" htmlFor="class-homeroom" hint="선택 사항">
+            <select
+              id="class-homeroom"
+              value={homeroomTeacherId}
+              onChange={(e) => setHomeroomTeacherId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">없음</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="부담임" htmlFor="class-assistant" hint="선택 사항">
+            <select
+              id="class-assistant"
+              value={assistantTeacherId}
+              onChange={(e) => setAssistantTeacherId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">없음</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+        <Button onClick={submit} disabled={pending || !name.trim()} className="mt-3 w-full">
           {editingId ? '수정 저장' : '추가'}
         </Button>
-        {editingId ? (
-          <Button variant="secondary" onClick={reset}>
-            취소
-          </Button>
-        ) : null}
-      </div>
-      {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+      </Modal>
 
       <ul className="mt-4 divide-y divide-line">
         {rows.length === 0 ? <EmptyState title="등록된 학급이 없습니다" /> : null}
@@ -418,7 +428,7 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
             </span>
             <span className="whitespace-nowrap text-[13.5px] text-ink-soft">학생 {row.studentCount}명</span>
             <div className="ml-auto flex gap-2">
-              <button type="button" onClick={() => edit(row)} className="text-[13.5px] text-brand underline">
+              <button type="button" onClick={() => openEdit(row)} className="text-[13.5px] text-brand underline">
                 수정
               </button>
               <button type="button" onClick={() => remove(row.id)} className="text-[13.5px] text-ink-soft underline hover:text-danger">
@@ -434,6 +444,7 @@ function ClassPanel({ rows, staff }: { rows: ClassRow[]; staff: StaffOption[] })
 
 // --- 특별실 -----------------------------------------------------------------
 function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: DepartmentRow[] }) {
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [roomType, setRoomType] = useState('general')
@@ -445,17 +456,7 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function edit(row: RoomRow) {
-    setEditingId(row.id)
-    setName(row.name)
-    setRoomType(row.roomType)
-    setFloor(row.floor?.toString() ?? '')
-    setCapacity(row.capacity?.toString() ?? '')
-    setFeaturesText(row.features.join(', '))
-    setManagedBy(row.managedBy ?? '')
-    setRequiresApproval(row.requiresApproval)
-  }
-  function reset() {
+  function openCreate() {
     setEditingId(null)
     setName('')
     setRoomType('general')
@@ -465,6 +466,19 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
     setManagedBy('')
     setRequiresApproval(false)
     setError(null)
+    setOpen(true)
+  }
+  function openEdit(row: RoomRow) {
+    setEditingId(row.id)
+    setName(row.name)
+    setRoomType(row.roomType)
+    setFloor(row.floor?.toString() ?? '')
+    setCapacity(row.capacity?.toString() ?? '')
+    setFeaturesText(row.features.join(', '))
+    setManagedBy(row.managedBy ?? '')
+    setRequiresApproval(row.requiresApproval)
+    setError(null)
+    setOpen(true)
   }
   function submit() {
     startTransition(async () => {
@@ -481,7 +495,7 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
         requiresApproval,
       })
       if (result.error) setError(result.error)
-      else reset()
+      else setOpen(false)
     })
   }
   function remove(id: string) {
@@ -493,62 +507,64 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
 
   return (
     <div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        <Field label="이름" htmlFor="room-name">
-          <input id="room-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="용도" htmlFor="room-type" hint="예: cooking, gym, therapy">
-          <input id="room-type" value={roomType} onChange={(e) => setRoomType(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="층" htmlFor="room-floor" hint="선택 사항">
-          <input id="room-floor" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="정원" htmlFor="room-capacity" hint="선택 사항">
-          <input
-            id="room-capacity"
-            type="number"
-            value={capacity}
-            onChange={(e) => setCapacity(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="관리 부서" htmlFor="room-managed" hint="선택 사항">
-          <select id="room-managed" value={managedBy} onChange={(e) => setManagedBy(e.target.value)} className={inputClass}>
-            <option value="">없음</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="특징" htmlFor="room-features" hint="쉼표로 구분">
-          <input
-            id="room-features"
-            value={featuresText}
-            onChange={(e) => setFeaturesText(e.target.value)}
-            placeholder="예: 싱크대, 인덕션"
-            className={inputClass}
-          />
-        </Field>
-      </div>
+      <Button onClick={openCreate}>특별실 추가</Button>
 
-      <label className="mt-2 flex items-center gap-1.5 text-[14px]">
-        <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} />
-        예약에 승인이 필요함
-      </label>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editingId ? '특별실 수정' : '특별실 추가'}
+        maxWidthClassName="max-w-lg"
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="이름" htmlFor="room-name">
+            <input id="room-name" value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="용도" htmlFor="room-type" hint="예: cooking, gym, therapy">
+            <input id="room-type" value={roomType} onChange={(e) => setRoomType(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="층" htmlFor="room-floor" hint="선택 사항">
+            <input id="room-floor" type="number" value={floor} onChange={(e) => setFloor(e.target.value)} className={inputClass} />
+          </Field>
+          <Field label="정원" htmlFor="room-capacity" hint="선택 사항">
+            <input
+              id="room-capacity"
+              type="number"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="관리 부서" htmlFor="room-managed" hint="선택 사항">
+            <select id="room-managed" value={managedBy} onChange={(e) => setManagedBy(e.target.value)} className={inputClass}>
+              <option value="">없음</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="특징" htmlFor="room-features" hint="쉼표로 구분">
+            <input
+              id="room-features"
+              value={featuresText}
+              onChange={(e) => setFeaturesText(e.target.value)}
+              placeholder="예: 싱크대, 인덕션"
+              className={inputClass}
+            />
+          </Field>
+        </div>
 
-      <div className="mt-2 flex gap-2">
-        <Button onClick={submit} disabled={pending || !name.trim()}>
+        <label className="mt-2 flex items-center gap-1.5 text-[14px]">
+          <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} />
+          예약에 승인이 필요함
+        </label>
+
+        {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+        <Button onClick={submit} disabled={pending || !name.trim()} className="mt-3 w-full">
           {editingId ? '수정 저장' : '추가'}
         </Button>
-        {editingId ? (
-          <Button variant="secondary" onClick={reset}>
-            취소
-          </Button>
-        ) : null}
-      </div>
-      {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+      </Modal>
 
       <ul className="mt-4 divide-y divide-line">
         {rows.length === 0 ? <EmptyState title="등록된 특별실이 없습니다" /> : null}
@@ -567,7 +583,7 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
               >
                 {row.isActive ? '사용 중지' : '다시 사용'}
               </button>
-              <button type="button" onClick={() => edit(row)} className="text-[13.5px] text-brand underline">
+              <button type="button" onClick={() => openEdit(row)} className="text-[13.5px] text-brand underline">
                 수정
               </button>
               <button type="button" onClick={() => remove(row.id)} className="text-[13.5px] text-ink-soft underline hover:text-danger">
@@ -583,6 +599,7 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
 
 // --- 학생(가명) ---------------------------------------------------------------
 function StudentPanel({ rows, classes }: { rows: StudentRow[]; classes: ClassRow[] }) {
+  const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [classId, setClassId] = useState(classes[0]?.id ?? '')
   const [studentCode, setStudentCode] = useState('')
@@ -590,24 +607,27 @@ function StudentPanel({ rows, classes }: { rows: StudentRow[]; classes: ClassRow
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  function edit(row: StudentRow) {
-    setEditingId(row.id)
-    setClassId(row.classId ?? '')
-    setStudentCode(row.studentCode)
-    setDisplayName(row.displayName)
-  }
-  function reset() {
+  function openCreate() {
     setEditingId(null)
     setClassId(classes[0]?.id ?? '')
     setStudentCode('')
     setDisplayName('')
     setError(null)
+    setOpen(true)
+  }
+  function openEdit(row: StudentRow) {
+    setEditingId(row.id)
+    setClassId(row.classId ?? '')
+    setStudentCode(row.studentCode)
+    setDisplayName(row.displayName)
+    setError(null)
+    setOpen(true)
   }
   function submit() {
     startTransition(async () => {
       const result = await saveStudent(editingId, { classId, studentCode, displayName })
       if (result.error) setError(result.error)
-      else reset()
+      else setOpen(false)
     })
   }
   function remove(id: string) {
@@ -629,40 +649,40 @@ function StudentPanel({ rows, classes }: { rows: StudentRow[]; classes: ClassRow
         <EmptyState title="학급을 먼저 만들어 주세요" hint="학급 탭에서 학급을 추가하면 여기서 배정할 수 있습니다" />
       ) : (
         <>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Field label="학급" htmlFor="student-class">
-              <select id="student-class" value={classId} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="학번" htmlFor="student-code">
-              <input id="student-code" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} className={inputClass} />
-            </Field>
-            <Field label="별칭" htmlFor="student-name" hint="실명 대신 이니셜·번호 등">
-              <input
-                id="student-name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className={inputClass}
-              />
-            </Field>
-          </div>
+          <Button onClick={openCreate}>학생 추가</Button>
 
-          <div className="mt-2 flex gap-2">
-            <Button onClick={submit} disabled={pending || !studentCode.trim() || !displayName.trim()}>
-              {editingId ? '수정 저장' : '추가'}
-            </Button>
-            {editingId ? (
-              <Button variant="secondary" onClick={reset}>
-                취소
+          <Modal open={open} onClose={() => setOpen(false)} title={editingId ? '학생 수정' : '학생 추가'}>
+            <div className="space-y-3">
+              <Field label="학급" htmlFor="student-class">
+                <select id="student-class" value={classId} onChange={(e) => setClassId(e.target.value)} className={inputClass}>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="학번" htmlFor="student-code">
+                <input id="student-code" value={studentCode} onChange={(e) => setStudentCode(e.target.value)} className={inputClass} />
+              </Field>
+              <Field label="별칭" htmlFor="student-name" hint="실명 대신 이니셜·번호 등">
+                <input
+                  id="student-name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
+              {error ? <p className="text-[13.5px] text-danger">{error}</p> : null}
+              <Button
+                onClick={submit}
+                disabled={pending || !studentCode.trim() || !displayName.trim()}
+                className="w-full"
+              >
+                {editingId ? '수정 저장' : '추가'}
               </Button>
-            ) : null}
-          </div>
-          {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
+            </div>
+          </Modal>
         </>
       )}
 
@@ -683,7 +703,7 @@ function StudentPanel({ rows, classes }: { rows: StudentRow[]; classes: ClassRow
               >
                 {row.isActive ? '사용 중지' : '다시 사용'}
               </button>
-              <button type="button" onClick={() => edit(row)} className="text-[13.5px] text-brand underline">
+              <button type="button" onClick={() => openEdit(row)} className="text-[13.5px] text-brand underline">
                 수정
               </button>
               <button type="button" onClick={() => remove(row.id)} className="text-[13.5px] text-ink-soft underline hover:text-danger">

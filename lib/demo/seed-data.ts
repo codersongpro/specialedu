@@ -83,6 +83,22 @@ export const ALL_DEMO_EMAILS: string[] = [
   ...EXTRA_STAFF.map((_, index) => `staff${index + 1}@hanbit.demo`),
 ]
 
+/**
+ * "체험하기"를 관리자용·일반 교사용 두 버튼으로 나누기 위한 이메일 풀.
+ *
+ * `isAdmin()`(lib/supabase/server.ts)과 같은 기준 — admin·manager만
+ * 관리자다. 나머지(교사·시간강사·실무사)는 전부 "일반 교사" 풀로 묶는다.
+ * 각 풀 안에서도 무작위로 고르므로, 같은 버튼을 여러 명이 동시에 눌러도
+ * 서로 다른 사람으로 들어가는 성질은 그대로 유지된다.
+ */
+export const ADMIN_DEMO_EMAILS: string[] = DEMO_ACCOUNTS.filter(
+  (a) => a.role === 'admin' || a.role === 'manager',
+).map((a) => a.email)
+
+export const TEACHER_DEMO_EMAILS: string[] = ALL_DEMO_EMAILS.filter(
+  (email) => !ADMIN_DEMO_EMAILS.includes(email),
+)
+
 export const DEPARTMENTS = ['교무부', '연구부', '생활지도부', '진로직업부', '방과후부']
 
 export const BEHAVIOR_CATEGORIES = [
