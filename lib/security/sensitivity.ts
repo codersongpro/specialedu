@@ -37,7 +37,7 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/rooms', label: '특별실 예약' },
       { href: '/timetable', label: '시간표 보기' },
-      { href: '/equipment', label: '교구 대여', planned: true },
+      { href: '/equipment', label: '교구 대여' },
     ],
   },
   {

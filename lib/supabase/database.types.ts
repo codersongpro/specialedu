@@ -449,6 +449,33 @@ export type NotificationRow = {
   created_at: string
 }
 
+export type EquipmentCondition = 'available' | 'repair' | 'retired'
+
+export type EquipmentItemRow = {
+  id: string
+  school_id: string
+  name: string
+  category: string | null
+  location: string | null
+  total_quantity: number
+  condition: EquipmentCondition
+  created_at: string
+  updated_at: string
+}
+
+export type EquipmentLoanRow = {
+  id: string
+  school_id: string
+  item_id: string
+  borrower_id: string
+  quantity: number
+  due_on: string | null
+  returned_at: string | null
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -507,6 +534,8 @@ export type Database = {
       safety_protocols: Table<SafetyProtocolRow>
       iep_goals: Table<IepGoalRow>
       iep_progress: Table<IepProgressRow>
+      equipment_items: Table<EquipmentItemRow>
+      equipment_loans: Table<EquipmentLoanRow>
     }
     Views: Empty
     Functions: Empty
@@ -520,6 +549,7 @@ export type Database = {
       substitution_status: SubstitutionStatus
       event_scope: EventScope
       event_category: EventCategory
+      equipment_condition: EquipmentCondition
     }
     CompositeTypes: Empty
   }
