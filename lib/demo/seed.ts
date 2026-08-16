@@ -84,32 +84,51 @@ export async function seedDemoSchool(
   // 되는 상태(체험하기 버튼이 "데모용이 아닙니다"로 막히는 원인)로 영영
   // 남았다. 그래서 auth.users 목록에서 @hanbit.demo 이메일을 직접 찾아
   // 전부 지운다 — profiles 존재 여부와 무관하게 지워야 고아가 남지 않는다.
-  const deleteFailures: string[] = []
-  for (let page = 1; ; page += 1) {
-    const { data: userPage, error: listError } = await db.auth.admin.listUsers({
-      page,
-      perPage: 200,
-    })
-    if (listError) throw listError
-    const demoUsers = userPage.users.filter((u) => u.email?.endsWith('@hanbit.demo'))
-    for (const demoUser of demoUsers) {
-      const { error: deleteError } = await db.auth.admin.deleteUser(demoUser.id)
-      if (deleteError) deleteFailures.push(`${demoUser.email}: ${deleteError.message}`)
-    }
-    if (userPage.users.length < 200) break
-  }
-
-  // 삭제가 하나라도 실패한 채로 학교를 지우면, 그 계정은 profiles 만 cascade로
-  // 사라지고 auth.users엔 남는 고아 계정이 다시 생긴다(바로 위 주석이 설명하는
-  // 문제 그 자체). 그래서 전부 지워졌다고 확인되기 전에는 학교를 건드리지 않는다.
-  if (deleteFailures.length > 0) {
-    throw new Error(`기존 데모 계정 정리에 실패했습니다: ${deleteFailures.join('; ')}`)
-  }
-
+  //
+  // 순서가 중요하다 — 학교를 **먼저** 지운다. auth 계정을 먼저 지우면
+  // profiles 가 cascade 로 함께 사라지는데, 그 도중 중단되면 "데모 학교
+  // 행은 남았는데 그 안의 프로필은 대부분 사라진" 반쯤 부서진 상태가 된다.
+  // 로그인 화면은 학교 존재 여부만 보고 체험하기 버튼을 띄우므로(page.tsx의
+  // hasDemoSchool), 버튼은 보이는데 눌러도 안 들어가지는 상태가 된다.
+  // 학교를 먼저 지우면 최악의 경우에도 "데모 없음"이라는 깨끗한 상태로
+  // 끝나 버튼 자체가 안 나온다.
   const { data: existing } = await db.from('schools').select('id').eq('is_demo', true)
   for (const school of existing ?? []) {
-    // 남은 것은 school 행 자체뿐이다. profiles 등은 on delete cascade 로 함께 지워진다.
+    // profiles 등 하위 데이터는 on delete cascade 로 함께 지워진다.
     await db.from('schools').delete().eq('id', school.id)
+  }
+
+  const listDemoUsers = async (): Promise<Array<{ id: string; email: string }>> => {
+    const found: Array<{ id: string; email: string }> = []
+    for (let page = 1; ; page += 1) {
+      const { data: userPage, error: listError } = await db.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      })
+      if (listError) throw listError
+      for (const user of userPage.users) {
+        if (user.email?.endsWith('@hanbit.demo')) found.push({ id: user.id, email: user.email })
+      }
+      if (userPage.users.length < 200) break
+    }
+    return found
+  }
+
+  // 두 번까지 시도한다. 일시적인 오류로 계정 하나가 남으면 아래 createUser 가
+  // "이미 등록된 이메일"로 실패해 시드 전체가 죽기 때문이다. 삭제 호출의
+  // 반환값을 믿지 않고 목록을 다시 읽어 정말 사라졌는지 확인한다.
+  let remaining = await listDemoUsers()
+  for (let attempt = 1; attempt <= 2 && remaining.length > 0; attempt += 1) {
+    for (const user of remaining) {
+      await db.auth.admin.deleteUser(user.id).catch(() => undefined)
+    }
+    remaining = await listDemoUsers()
+  }
+
+  if (remaining.length > 0) {
+    throw new Error(
+      `기존 데모 계정을 지우지 못했습니다: ${remaining.map((u) => u.email).join(', ')}`,
+    )
   }
 
   // --- 학교 ----------------------------------------------------------------

@@ -30,6 +30,8 @@ const NOTICE: Record<string, string> = {
 const REASON_NOTICE: Record<string, string> = {
   timeout:
     '자리를 비운 시간이 길어 자동으로 로그아웃되었습니다. 민감정보 구역일수록 더 짧게 끊깁니다. 다시 로그인해 주세요.',
+  stale:
+    '이전 로그인 정보가 더 이상 유효하지 않아 로그아웃했습니다. 다시 로그인해 주세요.',
 }
 
 export default async function LoginPage({

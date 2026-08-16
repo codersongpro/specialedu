@@ -21,9 +21,13 @@ const ACTIVITY_COOKIE = 'ha_activity'
  *
  * /setup 과 /api/demo 는 아직 계정이 하나도 없는 상태에서 써야 하므로 열어 둔다.
  * 시드 경로는 SEED_SECRET 을 따로 확인하므로 여기서 막지 않아도 된다.
+ *
+ * /logout 도 열어 둔다 — 세션을 끊으러 가는 길목이 세션을 요구하면,
+ * 세션이 망가진 사람은 로그아웃조차 못 하고 갇힌다.
  */
 const PUBLIC_PATHS = [
   '/login',
+  '/logout',
   '/invite',
   '/privacy',
   '/api/calendar',
