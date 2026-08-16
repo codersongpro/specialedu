@@ -14,7 +14,9 @@ import {
   EVENT_SEED,
   EXTRA_STAFF,
   PERIODS,
+  ROOM_BOOKING_PROFILE,
   ROOMS,
+  SAFETY_PROTOCOL_TEMPLATES,
   SUBJECTS,
 } from './seed-data'
 
@@ -42,6 +44,7 @@ export interface SeedSummary {
   substitutions: number
   events: number
   students: number
+  safetyProtocols: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
 
@@ -56,6 +59,9 @@ export async function seedDemoSchool(
     return h! * 60 + m!
   }
   const pick = <T,>(items: readonly T[], index: number): T => items[index % items.length]!
+  const randPick = <T,>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)]!
+  const randInt = (min: number, max: number): number =>
+    min + Math.floor(Math.random() * (max - min + 1))
 
   log('데모 데이터를 만듭니다...')
 
@@ -355,96 +361,48 @@ export async function seedDemoSchool(
   }
   log(`  시간표 ${slotRows.length}칸`)
 
-  // --- 특별실 예약 ---------------------------------------------------------
+  // --- 특별실 예약 (무작위 생성) ---------------------------------------------
+  //
+  // 예전에는 예약 30건을 하나하나 손으로 지정해서, 캘린더를 한 달 넘게
+  // 넘겨보면 앞쪽 며칠 말고는 텅 비어 보였다. 지금은 방 유형별로 어울리는
+  // 과정·사유 후보(ROOM_BOOKING_PROFILE)를 두고, 평일 5주 치를 무작위로
+  // 채운다. 실행할 때마다 다른 조합이 나오지만, 겹침은 여전히 막는다 —
+  // 같은 방·같은 날짜에 시간이 겹치는 예약 두 개가 들어가면 DB 이중예약
+  // 방지 제약(GIST EXCLUDE)에 걸려 시드 전체가 실패하기 때문이다.
   const reservationRows: Array<Record<string, unknown>> = []
-  const roomTaken = new Set<string>() // "roomId:date:startMin"
+  const roomSpans = new Map<string, Array<{ startsMin: number; endsMin: number }>>() // "roomId:date"
 
-  const bookingPlan: Array<{
-    room: string
-    className: string
-    kind: string
-    purpose: string
-    dayOffset: number
-    periodNo: number
-    status?: string
-  }> = [
-    { room: '요리실습실', className: '고3-1', kind: 'vocational_practice', purpose: '샌드위치 만들기', dayOffset: 0, periodNo: 2 },
-    { room: '요리실습실', className: '중2-1', kind: 'regular', purpose: '조리 실습', dayOffset: 1, periodNo: 3 },
-    { room: '바리스타실습실', className: '전공과1-1', kind: 'vocational_practice', purpose: '에스프레소 추출', dayOffset: 0, periodNo: 1 },
-    { room: '바리스타실습실', className: '전공과2-1', kind: 'vocational_practice', purpose: '라떼아트', dayOffset: 1, periodNo: 2 },
-    { room: '제과제빵실', className: '전공과1-2', kind: 'vocational_practice', purpose: '쿠키 만들기', dayOffset: 2, periodNo: 1 },
-    { room: '체육관', className: '초3-1', kind: 'regular', purpose: '체육', dayOffset: 0, periodNo: 3, status: 'pending' },
-    { room: '체육관', className: '중1-1', kind: 'regular', purpose: '뉴스포츠', dayOffset: 1, periodNo: 1 },
-    { room: '체육관', className: '고1-1', kind: 'afterschool', purpose: '방과후 체육', dayOffset: 2, periodNo: 7, status: 'pending' },
-    { room: '감각통합실', className: '초1-1', kind: 'regular', purpose: '감각통합', dayOffset: 0, periodNo: 1 },
-    { room: '감각통합실', className: '초2-1', kind: 'regular', purpose: '감각통합', dayOffset: 1, periodNo: 2 },
-    { room: '스누젤렌실', className: '초1-1', kind: 'regular', purpose: '이완 활동', dayOffset: 3, periodNo: 4 },
-    { room: '음악치료실', className: '중3-1', kind: 'regular', purpose: '음악치료', dayOffset: 0, periodNo: 4 },
-    { room: '음악치료실', className: '고2-1', kind: 'co_teaching', purpose: '생활음악 협력수업', dayOffset: 2, periodNo: 3 },
-    { room: '목공실', className: '고3-2', kind: 'vocational_practice', purpose: '수납함 제작', dayOffset: 1, periodNo: 4 },
-    { room: '세탁실습실', className: '전공과2-1', kind: 'vocational_practice', purpose: '세탁 실습', dayOffset: 2, periodNo: 2 },
-    { room: '컴퓨터실', className: '고1-2', kind: 'regular', purpose: '문서 작성', dayOffset: 0, periodNo: 5 },
-    { room: '컴퓨터실', className: '중1-2', kind: 'regular', purpose: '정보 활용', dayOffset: 3, periodNo: 3 },
-    { room: '도서실', className: '초4-1', kind: 'regular', purpose: '독서 활동', dayOffset: 1, periodNo: 5 },
-    { room: '도서실', className: '초5-1', kind: 'regular', purpose: '그림책 읽기', dayOffset: 3, periodNo: 2 },
-    { room: '다목적실', className: '초6-1', kind: 'onetime', purpose: '학년 모임', dayOffset: 4, periodNo: 3, status: 'pending' },
-    { room: '다목적실', className: '중2-1', kind: 'onetime', purpose: '학급 회의', dayOffset: 5, periodNo: 2 },
-    { room: '요리실습실', className: '전공과1-1', kind: 'vocational_practice', purpose: '급식 보조 실습', dayOffset: 3, periodNo: 1 },
-    { room: '체육관', className: '고3-1', kind: 'regular', purpose: '체육', dayOffset: 4, periodNo: 2 },
-    { room: '감각통합실', className: '초4-1', kind: 'regular', purpose: '감각통합', dayOffset: 4, periodNo: 1 },
-    { room: '음악치료실', className: '초5-1', kind: 'regular', purpose: '음악치료', dayOffset: 5, periodNo: 3 },
-    { room: '목공실', className: '전공과2-1', kind: 'vocational_practice', purpose: '조립 실습', dayOffset: 6, periodNo: 2 },
-    { room: '컴퓨터실', className: '고3-2', kind: 'regular', purpose: '취업 서류 작성', dayOffset: 6, periodNo: 3 },
-    { room: '도서실', className: '중3-1', kind: 'regular', purpose: '독서', dayOffset: 7, periodNo: 4 },
-    { room: '바리스타실습실', className: '고3-1', kind: 'vocational_practice', purpose: '카페 운영 실습', dayOffset: 7, periodNo: 2 },
-    { room: '세탁실습실', className: '전공과1-2', kind: 'vocational_practice', purpose: '다림질', dayOffset: 8, periodNo: 1 },
-  ]
-
-  for (const plan of bookingPlan) {
-    const room = roomByName.get(plan.room)
-    const cls = classByName.get(plan.className)
-    if (!room || !cls) continue
-
-    const date = toDate(plan.dayOffset)
-    // 주말은 건너뛴다
-    const weekday = addDays(today, plan.dayOffset).getDay()
-    if (weekday === 0 || weekday === 6) continue
-
-    const periodRow = (PERIODS[cls.course] ?? []).find(([no]) => no === plan.periodNo)
-    if (!periodRow) continue
-    const startMin = toMinutes(periodRow[2])
-
-    // 이 시드가 만든 예약끼리 겹치면 DB 제약에 걸려 시드가 통째로 실패한다
-    const key = `${room.id}:${date}:${startMin}`
-    if (roomTaken.has(key)) continue
-    roomTaken.add(key)
-
-    reservationRows.push({
-      school_id: schoolId,
-      room_id: room.id,
-      reserved_date: date,
-      course: cls.course,
-      period_no: plan.periodNo,
-      class_id: cls.id,
-      // 예약은 그 학급 담임 이름으로 들어간다
-      requester_id: cls.homeroom_teacher_id ?? teachers[0]!.id,
-      kind: plan.kind,
-      status: plan.status ?? 'approved',
-      purpose: plan.purpose,
-    })
+  const bookRoom = (
+    roomId: string,
+    date: string,
+    span: { startsMin: number; endsMin: number },
+  ): boolean => {
+    const key = `${roomId}:${date}`
+    const spans = roomSpans.get(key) ?? []
+    if (spans.some((s) => overlaps(s, span))) return false
+    spans.push(span)
+    roomSpans.set(key, spans)
+    return true
   }
 
-  // 고교학점제 선택과목 예약.
+  const DEFAULT_ROOM_PROFILE = {
+    courses: ['elementary', 'middle', 'high', 'vocational'],
+    purposes: ['수업 활동'],
+    kind: 'regular',
+  }
+
+  // 고교학점제 선택과목 예약부터 먼저 자리를 잡는다.
   // 학급이 아니라 수강그룹으로 잡히므로, 소속 학급(고3-1, 고3-2)이 함께 묶인다.
   // 그 시간에 고3-1 을 다른 방에 넣으려 하면 충돌로 걸린다 — 데모에서 확인해 볼 수 있다.
   const baristaGroup = (courseGroups ?? []).find((g) => g.name === '바리스타 선택')
   if (baristaGroup) {
     const groupDate = toDate(2)
     const groupWeekday = addDays(today, 2).getDay()
-    const startMin = toMinutes(PERIODS.high!.find(([no]) => no === 5)![2])
+    const periodRow = PERIODS.high!.find(([no]) => no === 5)!
+    const span = { startsMin: toMinutes(periodRow[2]), endsMin: toMinutes(periodRow[3]) }
     const roomId = roomByName.get('바리스타실습실')!.id
 
-    if (groupWeekday !== 0 && groupWeekday !== 6 && !roomTaken.has(`${roomId}:${groupDate}:${startMin}`)) {
+    if (groupWeekday !== 0 && groupWeekday !== 6 && bookRoom(roomId, groupDate, span)) {
       reservationRows.push({
         school_id: schoolId,
         room_id: roomId,
@@ -460,11 +418,63 @@ export async function seedDemoSchool(
     }
   }
 
+  // 평일 -14일 ~ +24일(약 5주 반)을 후보 날짜로 삼는다 — 캘린더를 앞뒤로
+  // 넘겨봐도 예약이 보이도록 과거·미래를 함께 채운다.
+  const bookingDateOffsets = Array.from({ length: 39 }, (_, i) => i - 14).filter((offset) => {
+    const weekday = addDays(today, offset).getDay()
+    return weekday !== 0 && weekday !== 6
+  })
+
+  for (const roomSeed of ROOMS) {
+    const room = roomByName.get(roomSeed.name)
+    if (!room) continue
+    const profile = ROOM_BOOKING_PROFILE[roomSeed.type] ?? DEFAULT_ROOM_PROFILE
+    const courseCandidates = (classes ?? []).filter((c) => profile.courses.includes(c.course))
+    if (courseCandidates.length === 0) continue
+
+    // 방마다 이번 시드에서 목표로 삼는 예약 건수 — 방 하나당 8~14건 정도면
+    // 5주 동안 주 2회쯤 잡힌 것처럼 보인다.
+    const target = randInt(8, 14)
+    let booked = 0
+    // 목표 건수를 채우다 겹침으로 실패하는 시도가 있을 수 있어 여유 있게 시도한다.
+    for (let attempt = 0; attempt < target * 3 && booked < target; attempt += 1) {
+      const offset = randPick(bookingDateOffsets)
+      const date = toDate(offset)
+      // 체육관 점검 기간(+9~+11일)은 피한다 — 아래에서 그 구간에 blackout 을 넣는다.
+      if (roomSeed.name === '체육관' && offset >= 9 && offset <= 11) continue
+
+      const cls = randPick(courseCandidates)
+      const periodRows = PERIODS[cls.course] ?? []
+      if (periodRows.length === 0) continue
+      const periodRow = randPick(periodRows)
+      const span = { startsMin: toMinutes(periodRow[2]), endsMin: toMinutes(periodRow[3]) }
+
+      if (!bookRoom(room.id, date, span)) continue
+
+      const status = room.requires_approval && Math.random() < 0.2 ? 'pending' : 'approved'
+
+      reservationRows.push({
+        school_id: schoolId,
+        room_id: room.id,
+        reserved_date: date,
+        course: cls.course,
+        period_no: periodRow[0],
+        class_id: cls.id,
+        // 예약은 그 학급 담임 이름으로 들어간다
+        requester_id: cls.homeroom_teacher_id ?? teachers[0]!.id,
+        kind: profile.kind,
+        status,
+        purpose: randPick(profile.purposes),
+      })
+      booked += 1
+    }
+  }
+
   const { error: reservationError } = await db
     .from('room_reservations')
     .insert(reservationRows as never)
   if (reservationError) throw reservationError
-  log(`  특별실 예약 ${reservationRows.length}건 (승인 대기·선택과목 포함)`)
+  log(`  특별실 예약 ${reservationRows.length}건 (5주 치 무작위 · 승인 대기·선택과목 포함)`)
 
   // 점검으로 막아 둔 구간 하나
   await db.from('room_blackouts').insert({
@@ -603,6 +613,28 @@ export async function seedDemoSchool(
   }
   log(`  PBS 기록 ${pbsRows.length}건 (학생 ${pbsStudents.length}명)`)
 
+  // --- 안전 프로토콜 샘플 (발작·알레르기·연하곤란 등) ------------------------
+  // 학생마다 7명 중 1명꼴로 표본을 붙인다 — 실제로는 전체 학생 중 일부만
+  // 해당하는 정보라 전원에게 넣으면 오히려 비현실적이다.
+  const safetyStudents = (students ?? []).filter((_, i) => i % 7 === 0)
+  const safetyAuthor = staffIds.find((s) => s.role === 'admin')?.id ?? teachers[0]!.id
+  const safetyRows = safetyStudents.map((student, i) => {
+    const template = pick(SAFETY_PROTOCOL_TEMPLATES, i)
+    return {
+      school_id: schoolId,
+      student_id: student.id,
+      category: template.category,
+      title: template.title,
+      content_enc: encryptSecret(template.content),
+      created_by: safetyAuthor,
+    }
+  })
+  if (safetyRows.length > 0) {
+    const { error: safetyError } = await db.from('safety_protocols').insert(safetyRows)
+    if (safetyError) throw safetyError
+  }
+  log(`  안전 프로토콜 ${safetyRows.length}건 (학생 ${safetyStudents.length}명)`)
+
   // --- 결보강 가중치 기본값 ------------------------------------------------
   await db.from('substitution_rules').insert({ school_id: schoolId })
 
@@ -622,6 +654,7 @@ export async function seedDemoSchool(
     substitutions: assignmentCount,
     events: eventRows.length,
     students: studentRows.length,
+    safetyProtocols: safetyRows.length,
     accounts: DEMO_ACCOUNTS.map((account) => ({
       email: account.email,
       password: DEMO_PASSWORD,

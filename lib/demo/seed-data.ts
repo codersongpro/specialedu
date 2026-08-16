@@ -195,6 +195,108 @@ export const ROOMS: Array<{
   { name: '다목적실', type: 'multipurpose', floor: 1, capacity: 30, features: ['음향', '빔프로젝터'], approval: true },
 ]
 
+/**
+ * 특별실 유형별 어울리는 과정·예약 사유 — 무작위 예약 생성에 쓴다.
+ *
+ * 방 이름을 하나하나 지정하는 대신, 유형(room_type)에 맞는 과정과 사유
+ * 후보를 두고 시드가 매번 다르게 뽑아 채운다. 그래도 "요리실습실에
+ * 감각통합 수업이 잡히는" 것 같은 억지스러운 조합은 안 나온다.
+ */
+export const ROOM_BOOKING_PROFILE: Record<
+  string,
+  { courses: string[]; purposes: string[]; kind: string }
+> = {
+  cooking: {
+    courses: ['high', 'vocational'],
+    purposes: ['조리 실습', '샌드위치 만들기', '급식 보조 실습', '간식 만들기', '볶음 요리 실습'],
+    kind: 'vocational_practice',
+  },
+  vocational: {
+    courses: ['vocational', 'high'],
+    purposes: ['에스프레소 추출', '라떼아트', '포장 실습', '카페 운영 실습', '음료 제조'],
+    kind: 'vocational_practice',
+  },
+  workshop: {
+    courses: ['vocational', 'high'],
+    purposes: ['수납함 제작', '조립 실습', '목공 기초', '사포질·마감'],
+    kind: 'vocational_practice',
+  },
+  therapy: {
+    courses: ['elementary', 'middle'],
+    purposes: ['감각통합', '음악치료', '이완 활동', '촉각 놀이'],
+    kind: 'regular',
+  },
+  gym: {
+    courses: ['elementary', 'middle', 'high', 'vocational'],
+    purposes: ['체육', '뉴스포츠', '방과후 체육', '체력 단련'],
+    kind: 'regular',
+  },
+  computer: {
+    courses: ['middle', 'high', 'vocational'],
+    purposes: ['문서 작성', '정보 활용', '취업 서류 작성', '온라인 수업'],
+    kind: 'regular',
+  },
+  library: {
+    courses: ['elementary', 'middle', 'high'],
+    purposes: ['독서 활동', '그림책 읽기', '독서', '자료 조사'],
+    kind: 'regular',
+  },
+  multipurpose: {
+    courses: ['elementary', 'middle', 'high', 'vocational'],
+    purposes: ['학년 모임', '학급 회의', '동아리 활동', '소모임'],
+    kind: 'onetime',
+  },
+}
+
+/** 응급 시 즉시 확인해야 하는 안전 프로토콜 더미 — 학생 몇 명에게 표본으로 붙인다 */
+export const SAFETY_PROTOCOL_TEMPLATES: Array<{
+  category: 'seizure' | 'allergy' | 'dysphagia' | 'other'
+  title: string
+  content: string
+}> = [
+  {
+    category: 'seizure',
+    title: '발작 대응 절차',
+    content:
+      '경련 시작 시 즉시 옆으로 눕히고 주변 위험물을 치운다. 입에 아무것도 넣지 않는다. 5분 이상 지속되거나 호흡이 어려우면 즉시 119에 신고하고 보건실에 연락한다.',
+  },
+  {
+    category: 'allergy',
+    title: '견과류 알레르기',
+    content:
+      '급식·간식에 견과류 성분이 들어가면 절대 섭취 금지. 두드러기·호흡곤란 발생 시 보건실 비치 에피펜을 즉시 사용하고 119에 신고한다.',
+  },
+  {
+    category: 'allergy',
+    title: '갑각류 알레르기',
+    content:
+      '새우·게 등 갑각류 섭취 금지. 급식 전 영양교사에게 재확인이 필요하다. 이상 반응 시 즉시 보건실로 인계한다.',
+  },
+  {
+    category: 'dysphagia',
+    title: '연하곤란 — 다진 음식 필요',
+    content:
+      '일반식 섭취 시 사레 위험이 있다. 급식은 다진 형태로 별도 제공하고, 식사 중에는 반드시 보조 인력이 곁에서 관찰한다.',
+  },
+  {
+    category: 'dysphagia',
+    title: '연하곤란 — 걸쭉한 음료만 가능',
+    content:
+      '일반 음료는 흡인 위험이 있어 점도증진제로 걸쭉하게 만들어 제공한다. 식사 시간 전후로는 눕히지 않는다.',
+  },
+  {
+    category: 'other',
+    title: '휠체어 이동 시 주의',
+    content: '계단 이용 불가, 반드시 엘리베이터로 이동한다. 이동 중에는 벨트 고정 여부를 꼭 확인한다.',
+  },
+  {
+    category: 'other',
+    title: '큰 소리에 놀람 반응',
+    content:
+      '화재경보 등 큰 소리에 심한 불안 반응을 보인다. 소음이 예정돼 있으면 미리 알려주고, 발생 시 귀마개 착용을 돕는다.',
+  },
+]
+
 /** 고교학점제 선택과목 · 자유학기 주제선택활동 */
 export const COURSE_GROUPS: Array<{
   name: string
