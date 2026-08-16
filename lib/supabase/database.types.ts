@@ -347,6 +347,20 @@ export type BudgetExpenseRow = {
   reviewed_by: string | null
   reviewed_at: string | null
   reject_reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type PersonalDraftRow = {
+  id: string
+  school_id: string
+  owner_id: string
+  tool: 'lesson_adapt' | 'video_kit' | 'document_checklist' | 'trip_plan' | 'meeting_notes'
+  title: string
+  content: string
+  meta: Record<string, unknown>
+  created_at: string
+  updated_at: string
 }
 
 export type AiUsageLogRow = {
@@ -435,6 +449,33 @@ export type NotificationRow = {
   created_at: string
 }
 
+export type EquipmentCondition = 'available' | 'repair' | 'retired'
+
+export type EquipmentItemRow = {
+  id: string
+  school_id: string
+  name: string
+  category: string | null
+  location: string | null
+  total_quantity: number
+  condition: EquipmentCondition
+  created_at: string
+  updated_at: string
+}
+
+export type EquipmentLoanRow = {
+  id: string
+  school_id: string
+  item_id: string
+  borrower_id: string
+  quantity: number
+  due_on: string | null
+  returned_at: string | null
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -486,12 +527,15 @@ export type Database = {
       ai_usage_logs: Table<AiUsageLogRow>
       budget_lines: Table<BudgetLineRow>
       budget_expenses: Table<BudgetExpenseRow>
+      personal_drafts: Table<PersonalDraftRow>
       behavior_categories: Table<BehaviorCategoryRow>
       pbs_records: Table<PbsRecordRow>
       notifications: Table<NotificationRow>
       safety_protocols: Table<SafetyProtocolRow>
       iep_goals: Table<IepGoalRow>
       iep_progress: Table<IepProgressRow>
+      equipment_items: Table<EquipmentItemRow>
+      equipment_loans: Table<EquipmentLoanRow>
     }
     Views: Empty
     Functions: Empty
@@ -505,6 +549,7 @@ export type Database = {
       substitution_status: SubstitutionStatus
       event_scope: EventScope
       event_category: EventCategory
+      equipment_condition: EquipmentCondition
     }
     CompositeTypes: Empty
   }

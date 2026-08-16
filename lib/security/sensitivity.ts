@@ -37,7 +37,7 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/rooms', label: '특별실 예약' },
       { href: '/timetable', label: '시간표 보기' },
-      { href: '/equipment', label: '교구 대여', planned: true },
+      { href: '/equipment', label: '교구 대여' },
     ],
   },
   {
@@ -82,6 +82,10 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/toolbox/easy-read', label: '쉬운글 안내문' },
       { href: '/toolbox/media', label: '수업 자료 찾기' },
+      { href: '/toolbox/lesson-adapt', label: '수준별 수업 변환기' },
+      { href: '/toolbox/video-kit', label: '영상 수업 꾸러미' },
+      { href: '/toolbox/drafts', label: '내 AI 초안' },
+      { href: '/toolbox/automation', label: '업무 자동화' },
     ],
   },
   {

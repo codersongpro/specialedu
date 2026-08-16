@@ -181,6 +181,12 @@ function VideoCard({
         >
           유튜브에서 보기
         </a>
+        <a
+          href={`/toolbox/video-kit?videoId=${encodeURIComponent(video.videoId)}&title=${encodeURIComponent(video.title)}&duration=${video.durationSec ?? 0}`}
+          className="mt-1.5 ml-3 inline-block text-[12.5px] text-brand underline"
+        >
+          수업 꾸러미 만들기
+        </a>
       </div>
     </div>
   )

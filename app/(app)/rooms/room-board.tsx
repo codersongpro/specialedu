@@ -6,6 +6,7 @@ import { Button, Card, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { formatKoreanDateWithDay, shiftDays, todayString } from '@/lib/date'
 import { findConflicts, hasBlocking } from '@/lib/scheduling/conflicts'
+import { reservationLabels } from '@/lib/scheduling/reservation-label'
 import { recommendRooms } from '@/lib/scheduling/recommend'
 import { COURSE_TONE } from '@/lib/scheduling/course-colors'
 import { formatSpan } from '@/lib/scheduling/time'
@@ -218,11 +219,7 @@ function ReservedCell({
   ctx: ScheduleContext
   canCancel: boolean
 }) {
-  const who =
-    (reservation.classId && ctx.classes.get(reservation.classId)?.name) ||
-    (reservation.courseGroupId && ctx.groups.get(reservation.courseGroupId)?.name) ||
-    ctx.teacherNames.get(reservation.requesterId) ||
-    '예약됨'
+  const { target, requester } = reservationLabels(reservation, ctx)
 
   return (
     <div
@@ -232,12 +229,13 @@ function ReservedCell({
       )}
     >
       <div className="flex items-start justify-between gap-1">
-        <span className="text-xs font-medium">{who}</span>
+        <span className="text-xs font-medium">{target}</span>
       </div>
       <p className="mt-0.5 text-[11px] text-ink-soft">
         {BOOKING_KIND_LABEL[reservation.kind]}
         {reservation.purpose ? ` · ${reservation.purpose}` : ''}
       </p>
+      <p className="mt-0.5 text-[11px] text-ink-soft">예약: {requester}</p>
       {canCancel ? (
         <form action={cancelReservation} className="mt-1">
           <input type="hidden" name="id" value={reservation.id} />
