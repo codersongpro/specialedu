@@ -392,6 +392,34 @@ export type SafetyProtocolRow = {
   updated_at: string
 }
 
+export type IepArea = 'self_care' | 'communication' | 'academic' | 'social' | 'motor' | 'other'
+export type IepGoalStatus = 'active' | 'achieved' | 'discontinued'
+export type IepAchievementLevel = 'independent' | 'partial_help' | 'full_help' | 'not_yet'
+
+export type IepGoalRow = {
+  id: string
+  school_id: string
+  student_id: string
+  area: IepArea
+  title: string
+  term_label: string
+  status: IepGoalStatus
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type IepProgressRow = {
+  id: string
+  school_id: string
+  goal_id: string
+  occurred_on: string
+  level: IepAchievementLevel
+  note_enc: string | null
+  recorded_by: string | null
+  created_at: string
+}
+
 export type NotificationRow = {
   id: string
   school_id: string
@@ -458,6 +486,8 @@ export type Database = {
       pbs_records: Table<PbsRecordRow>
       notifications: Table<NotificationRow>
       safety_protocols: Table<SafetyProtocolRow>
+      iep_goals: Table<IepGoalRow>
+      iep_progress: Table<IepProgressRow>
     }
     Views: Empty
     Functions: Empty

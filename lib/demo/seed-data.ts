@@ -297,6 +297,27 @@ export const SAFETY_PROTOCOL_TEMPLATES: Array<{
   },
 ]
 
+/** IEP(개별화교육계획) 목표 더미 — 학생 몇 명에게 영역별로 1~2개씩 붙인다 */
+export const IEP_GOAL_TEMPLATES: Array<{
+  area: 'self_care' | 'communication' | 'academic' | 'social' | 'motor' | 'other'
+  title: string
+}> = [
+  { area: 'self_care', title: '손 씻기를 독립적으로 수행한다' },
+  { area: 'communication', title: '3어절 문장으로 원하는 것을 요구한다' },
+  { area: 'academic', title: '한 자릿수 덧셈 문제를 스스로 푼다' },
+  { area: 'social', title: '차례를 기다려 순서대로 활동에 참여한다' },
+  { area: 'motor', title: '난간을 잡고 계단을 오르내린다' },
+  { area: 'other', title: '그림 일과표를 보고 다음 활동으로 스스로 이동한다' },
+]
+
+/** 진도 기록에 붙이는 짧은 메모 더미 — 암호화해 저장하는 필드라 실제 개인정보는 없다 */
+export const IEP_PROGRESS_NOTES = [
+  '스스로 끝까지 해냄',
+  '한 번 더 알려주니 이어서 함',
+  '중간에 도움이 필요했음',
+  '오늘은 시도만 하고 마무리는 도와줌',
+]
+
 /** 고교학점제 선택과목 · 자유학기 주제선택활동 */
 export const COURSE_GROUPS: Array<{
   name: string

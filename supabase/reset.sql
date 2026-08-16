@@ -20,6 +20,8 @@ drop table if exists
   public.audit_logs,
   public.notifications,
   public.safety_protocols,
+  public.iep_progress,
+  public.iep_goals,
   public.pbs_records,
   public.behavior_categories,
   public.budget_expenses,

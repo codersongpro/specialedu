@@ -12,6 +12,7 @@ interface SeedSummary {
   events: number
   students: number
   safetyProtocols: number
+  iepGoals: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
 
@@ -69,7 +70,8 @@ export function SeedPanel() {
         <p className="mt-1 text-xs text-ink-soft">
           교직원 {summary.staff}명 · 학급 {summary.classes}개 · 특별실 {summary.rooms}개 · 시간표{' '}
           {summary.slots}칸 · 예약 {summary.reservations}건 · 일정 {summary.events}건 · 학생{' '}
-          {summary.students}명 · 안전 프로토콜 {summary.safetyProtocols}건
+          {summary.students}명 · 안전 프로토콜 {summary.safetyProtocols}건 · IEP 목표{' '}
+          {summary.iepGoals}건
         </p>
 
         <ul className="mt-4 space-y-1">

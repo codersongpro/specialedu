@@ -13,6 +13,8 @@ import {
   DEPARTMENTS,
   EVENT_SEED,
   EXTRA_STAFF,
+  IEP_GOAL_TEMPLATES,
+  IEP_PROGRESS_NOTES,
   PERIODS,
   ROOM_BOOKING_PROFILE,
   ROOMS,
@@ -45,6 +47,7 @@ export interface SeedSummary {
   events: number
   students: number
   safetyProtocols: number
+  iepGoals: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
 
@@ -635,6 +638,51 @@ export async function seedDemoSchool(
   }
   log(`  안전 프로토콜 ${safetyRows.length}건 (학생 ${safetyStudents.length}명)`)
 
+  // --- IEP 목표·진도 샘플 ---------------------------------------------------
+  // 학생 5명 중 1명꼴로 목표 2개씩 붙이고, 각 목표에 최근 4주간 진도 기록을
+  // 3건씩 채워 화면에서 추세(좋아지는 중/제자리)가 바로 보이게 한다.
+  const iepStudents = (students ?? []).filter((_, i) => i % 5 === 0)
+  const iepAuthor = teachers[0]!.id
+  const LEVEL_PROGRESSION: Array<'full_help' | 'partial_help' | 'independent'> = [
+    'full_help',
+    'partial_help',
+    'independent',
+  ]
+  const iepGoalRows = iepStudents.flatMap((student, si) =>
+    [0, 1].map((gi) => {
+      const template = pick(IEP_GOAL_TEMPLATES, si * 2 + gi)
+      return {
+        school_id: schoolId,
+        student_id: student.id,
+        area: template.area,
+        title: template.title,
+        term_label: `${year}학년도 2학기`,
+        created_by: iepAuthor,
+      }
+    }),
+  )
+  const { data: iepGoals, error: iepGoalsError } =
+    iepGoalRows.length > 0
+      ? await db.from('iep_goals').insert(iepGoalRows).select('id')
+      : { data: [], error: null }
+  if (iepGoalsError) throw iepGoalsError
+
+  const iepProgressRows = (iepGoals ?? []).flatMap((goal, gi) =>
+    [28, 14, 0].map((daysAgo, li) => ({
+      school_id: schoolId,
+      goal_id: goal.id,
+      occurred_on: toDate(-daysAgo),
+      level: LEVEL_PROGRESSION[li]!,
+      note_enc: (gi + li) % 3 === 0 ? encryptSecret(pick(IEP_PROGRESS_NOTES, gi + li)) : null,
+      recorded_by: iepAuthor,
+    })),
+  )
+  if (iepProgressRows.length > 0) {
+    const { error: iepProgressError } = await db.from('iep_progress').insert(iepProgressRows)
+    if (iepProgressError) throw iepProgressError
+  }
+  log(`  IEP 목표 ${iepGoalRows.length}건 (학생 ${iepStudents.length}명) · 진도 기록 ${iepProgressRows.length}건`)
+
   // --- 결보강 가중치 기본값 ------------------------------------------------
   await db.from('substitution_rules').insert({ school_id: schoolId })
 
@@ -655,6 +703,7 @@ export async function seedDemoSchool(
     events: eventRows.length,
     students: studentRows.length,
     safetyProtocols: safetyRows.length,
+    iepGoals: iepGoalRows.length,
     accounts: DEMO_ACCOUNTS.map((account) => ({
       email: account.email,
       password: DEMO_PASSWORD,
