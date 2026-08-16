@@ -17,11 +17,14 @@ export function minutesToTime(min: number): string {
 }
 
 /**
- * 새 학교를 열 때 넣어 두는 기본 교시 — 9시 시작, 40분 수업 + 10분 쉬는 시간.
+ * 새 학교를 열 때 넣어 두는 기본 교시 — 9시 시작, 40분 수업 + 10분 쉬는 시간,
+ * 기본 9교시.
  *
- * 학교마다 실제 시정표(교시 길이·시작 시각)가 다르므로 이건 정답이 아니라
- * 관리자가 화면에서 바로 고쳐 쓸 수 있는 출발점이다. 4개 과정 모두 같은
- * 값으로 시작하고, 학교 관리 화면에서 과정별로 따로 조정한다.
+ * 학교마다 실제 시정표(교시 수·길이·시작 시각)가 다르므로 이건 정답이
+ * 아니라 관리자가 화면(학교 관리 > 시정표, `PeriodsForm`)에서 바로
+ * 고쳐 쓸 수 있는 출발점이다 — 교시를 추가·삭제하거나 시각을 바꾸는
+ * 것도 그 화면에서 자유롭게 된다. 4개 과정 모두 같은 값으로 시작하고,
+ * 학교 관리 화면에서 과정별로 따로 조정한다.
  */
 export const DEFAULT_PERIODS: DefaultPeriod[] = [
   { periodNo: 1, label: '1교시', startsMin: toMin(9, 0), endsMin: toMin(9, 40), isAfterschool: false },
@@ -31,6 +34,8 @@ export const DEFAULT_PERIODS: DefaultPeriod[] = [
   { periodNo: 5, label: '5교시', startsMin: toMin(13, 10), endsMin: toMin(13, 50), isAfterschool: false },
   { periodNo: 6, label: '6교시', startsMin: toMin(14, 0), endsMin: toMin(14, 40), isAfterschool: false },
   { periodNo: 7, label: '7교시', startsMin: toMin(14, 50), endsMin: toMin(15, 30), isAfterschool: false },
+  { periodNo: 8, label: '8교시', startsMin: toMin(15, 40), endsMin: toMin(16, 20), isAfterschool: false },
+  { periodNo: 9, label: '9교시', startsMin: toMin(16, 30), endsMin: toMin(17, 10), isAfterschool: false },
 ]
 
 export const COURSE_LEVELS: CourseLevel[] = ['elementary', 'middle', 'high', 'vocational']
