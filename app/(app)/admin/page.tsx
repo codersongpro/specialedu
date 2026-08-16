@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Badge, Button, Card, PageHeader } from '@/components/ui'
 import { loadWeights } from '@/lib/data/substitution'
@@ -23,23 +24,26 @@ export default async function AdminPage() {
   if (!isAdmin(session.profile)) redirect('/dashboard')
 
   const supabase = await createClient()
-  const [{ data: invitations }, { data: members }, { data: periods }] = await Promise.all([
-    supabase
-      .from('invitations')
-      .select('*')
-      .is('accepted_at', null)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('profiles')
-      .select('id, name, role, employment, is_active')
-      .eq('school_id', session.school.id)
-      .order('name'),
-    supabase
-      .from('periods')
-      .select('course, period_no, label, starts_min, ends_min, is_afterschool')
-      .eq('school_id', session.school.id)
-      .order('period_no'),
-  ])
+  const [{ data: invitations }, { data: members }, { data: periods }, { count: classCount }, { count: roomCount }] =
+    await Promise.all([
+      supabase
+        .from('invitations')
+        .select('*')
+        .is('accepted_at', null)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('profiles')
+        .select('id, name, role, employment, is_active')
+        .eq('school_id', session.school.id)
+        .order('name'),
+      supabase
+        .from('periods')
+        .select('course, period_no, label, starts_min, ends_min, is_afterschool')
+        .eq('school_id', session.school.id)
+        .order('period_no'),
+      supabase.from('classes').select('id', { count: 'exact', head: true }).eq('school_id', session.school.id),
+      supabase.from('rooms').select('id', { count: 'exact', head: true }).eq('school_id', session.school.id),
+    ])
 
   const { weights, longRunThreshold } = await loadWeights(supabase, session.school.id)
 
@@ -63,7 +67,28 @@ export default async function AdminPage() {
 
   return (
     <>
-      <PageHeader title="학교 관리" description={session.school.name} />
+      <PageHeader
+        title="학교 관리"
+        description={session.school.name}
+        actions={
+          <Link href="/admin/data">
+            <Button variant="secondary">기준정보 관리</Button>
+          </Link>
+        }
+      />
+
+      {(classCount ?? 0) === 0 || (roomCount ?? 0) === 0 ? (
+        <Card className="mb-4 border-warn/30 bg-warn-soft p-4">
+          <p className="text-[15px] font-medium text-warn">아직 학급이나 특별실이 등록되지 않았습니다</p>
+          <p className="mt-1 text-[13.5px] text-warn">
+            특별실 예약·시간표·PBS 기록 등 대부분의 기능이 학급·특별실 데이터가 있어야 동작합니다.{' '}
+            <Link href="/admin/data" className="underline">
+              기준정보 관리
+            </Link>
+            에서 먼저 채워 주세요.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
