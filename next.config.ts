@@ -20,9 +20,17 @@ const supabaseOrigin = supabaseHttpOrigin
   ? `${supabaseHttpOrigin} ${supabaseHttpOrigin.replace('https://', 'wss://')}`
   : ''
 
+// 'unsafe-eval'은 개발 모드 Fast Refresh/HMR에 필요하지만, 운영에서는
+// eval 기반 XSS 페이로드를 그대로 실행시켜 줄 뿐 실사용 코드에는 필요 없다.
+// 운영 빌드에서만 뺀다.
+const scriptSrc =
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   // 영수증 첨부(Supabase Storage 서명 URL)를 <img> 로 보여줘야 해서 img-src 에도 Supabase 오리진이 필요하다
   `img-src 'self' data: blob: https://static.arasaac.org https://i.ytimg.com ${supabaseHttpOrigin}`.trim(),

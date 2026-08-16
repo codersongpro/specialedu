@@ -171,6 +171,34 @@ export function maskPII(text: string, opts: MaskOptions = {}): MaskResult {
   return { masked, tokens, findings }
 }
 
+/**
+ * 여러 입력 필드를 한 번에 마스킹한다.
+ *
+ * maskPII()를 필드별로 따로 호출하면 토큰 번호([[P1]], [[P2]]...)가 호출마다
+ * 새로 매겨져 필드 사이에서 충돌한다 — 제목의 [[P1]]과 상세의 [[P1]]이 서로
+ * 다른 원문을 가리키게 되어 restorePII()가 엉뚱하게 복원해 버린다. 구분자로
+ * 이어붙여 한 번만 마스킹한 뒤 다시 나누면 토큰이 전 필드에서 유일해진다.
+ */
+export function maskFields<K extends string>(
+  fields: Record<K, string>,
+  opts: MaskOptions = {},
+): MaskResult & { fields: Record<K, string> } {
+  const keys = Object.keys(fields) as K[]
+  // 입력 텍스트에 실제로 나타날 일이 없는 구분자. 개행으로 감싸 패턴이
+  // 필드 경계를 넘어 매칭되는 것도 함께 막는다(예: 전화번호가 두 필드에 걸쳐 이어짐).
+  const SEP = '\n␟\n'
+  const combined = keys.map((k) => fields[k]).join(SEP)
+  const result = maskPII(combined, opts)
+  const parts = result.masked.split(SEP)
+
+  const maskedFields = {} as Record<K, string>
+  keys.forEach((key, i) => {
+    maskedFields[key] = parts[i] ?? ''
+  })
+
+  return { ...result, fields: maskedFields }
+}
+
 export interface RestoreResult {
   text: string
   /** 모델이 없애버린 토큰. 하나라도 있으면 복원이 불완전하다. */

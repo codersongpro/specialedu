@@ -8,12 +8,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
  */
 export async function GET(request: Request) {
   // Vercel Cron 은 이 헤더를 붙여 호출한다. 외부에서 못 부르게 막는다.
+  // CRON_SECRET이 설정 안 돼 있으면(배포 실수) 검사를 건너뛰지 않고
+  // 바로 막는다 — fail-open이면 아무나 이 경로를 호출해 파기 배치를
+  // 마음대로 돌릴 수 있다.
   const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = request.headers.get('authorization')
-    if (auth !== `Bearer ${secret}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  if (!secret) {
+    return new Response('CRON_SECRET not configured', { status: 503 })
+  }
+  const auth = request.headers.get('authorization')
+  if (auth !== `Bearer ${secret}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const admin = createAdminClient()

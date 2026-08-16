@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockedFindings, maskPII, restorePII, scanForBlocked } from '@/lib/security/pii'
+import { blockedFindings, maskFields, maskPII, restorePII, scanForBlocked } from '@/lib/security/pii'
 
 describe('마스킹 왕복', () => {
   it('가정통신문에서 이름·전화번호를 빼고 되돌린다', () => {
@@ -113,5 +113,54 @@ describe('겹침 처리', () => {
     const { masked } = maskPII('김하늘 선생님', { staffNames: ['김하늘'] })
     expect(masked).toBe('[[P1]] 선생님')
     expect(masked).not.toContain('[[P2]]')
+  })
+})
+
+describe('여러 필드 한 번에 마스킹', () => {
+  it('필드마다 따로 마스킹하면 생기는 토큰 충돌이 없다', () => {
+    const { fields, tokens } = maskFields({
+      title: '이바다 학생 체험학습 안내',
+      place: '이바다 학생 자택',
+      detail: '문의 010-1234-5678',
+    })
+
+    // title과 place에 각각 등장하는 "이바다"가 서로 다른 토큰 번호로
+    // 갈라지지 않고 같은 토큰을 공유해야 한다(따로 호출했다면 [[P1]]이
+    // 두 번 나오면서 서로 다른 원문을 가리키는 충돌이 생겼을 것).
+    expect(fields.title).not.toContain('이바다')
+    expect(fields.place).not.toContain('이바다')
+    const titleToken = fields.title.match(/\[\[P\d+\]\]/)?.[0]
+    const placeToken = fields.place.match(/\[\[P\d+\]\]/)?.[0]
+    expect(titleToken).toBeDefined()
+    expect(titleToken).toBe(placeToken)
+    expect(fields.detail).not.toContain('010-1234-5678')
+    expect(Object.keys(tokens).length).toBe(2)
+  })
+
+  it('필드 경계 너머로 패턴이 번지지 않는다', () => {
+    // place가 "010-1234"로 끝나고 detail이 "5678"로 시작해도 두 필드가
+    // 이어붙여져 하나의 전화번호로 오인되면 안 된다.
+    const { findings } = maskFields({ place: '문의 010-1234', detail: '5678 아님' })
+    expect(findings.some((f) => f.kind === 'phone')).toBe(false)
+  })
+
+  it('빈 결과를 원래 필드 개수·순서대로 복원한다', () => {
+    const { fields } = maskFields({ a: '안전한 문장', b: '', c: '또 다른 문장' })
+    expect(Object.keys(fields)).toEqual(['a', 'b', 'c'])
+    expect(fields.a).toBe('안전한 문장')
+    expect(fields.b).toBe('')
+    expect(fields.c).toBe('또 다른 문장')
+  })
+
+  it('마스킹 후 restorePII로 전 필드를 한 번에 되돌릴 수 있다', () => {
+    const { fields, tokens } = maskFields({
+      title: '김하늘 선생님 안내',
+      detail: '문의 010-1234-5678',
+    })
+    const rewritten = `${fields.title}\n${fields.detail}`
+    const { text, missing } = restorePII(rewritten, tokens)
+    expect(missing).toHaveLength(0)
+    expect(text).toContain('김하늘')
+    expect(text).toContain('010-1234-5678')
   })
 })

@@ -5,7 +5,7 @@ import { matchPictograms, pictogramImageUrl } from '@/lib/ai/arasaac'
 import { generateEasyRead, type EasyReadLevel } from '@/lib/ai/gemini'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
-import { blockedFindings, maskPII, restorePII, type Confidence, type PiiKind } from '@/lib/security/pii'
+import { blockedFindings, maskFields, maskPII, restorePII, type Confidence, type PiiKind } from '@/lib/security/pii'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, requireSession } from '@/lib/supabase/server'
 
@@ -87,11 +87,24 @@ export async function generateNotice(input: z.input<typeof NoticeInput>): Promis
   const data = parsed.data
 
   const ctx = await loadMaskContext(session.school.id, session.school.name)
-  const masked = maskPII(data.detail, ctx)
+  // 제목·장소·준비물·대상도 전부 자유 텍스트라 개인정보가 들어갈 수 있다
+  // (예: 장소 칸에 "김민수 학생 자택"). detail만 마스킹하던 것을 전 필드로
+  // 넓힌다 — 배열인 items는 구분자로 합쳤다가 마스킹 뒤 다시 나눈다.
+  const ITEMS_SEP = '␞'
+  const masked = maskFields(
+    {
+      title: data.title,
+      place: data.place ?? '',
+      items: data.items.join(ITEMS_SEP),
+      audience: data.audience,
+      detail: data.detail,
+    },
+    ctx,
+  )
 
   if (blockedFindings(masked.findings).length > 0) {
     return {
-      error: '주민등록번호나 계좌번호로 보이는 내용이 있어 보낼 수 없습니다. 안내사항에서 지워 주세요.',
+      error: '주민등록번호나 계좌번호로 보이는 내용이 있어 보낼 수 없습니다. 입력 내용을 확인해 지워 주세요.',
     }
   }
 
@@ -113,13 +126,13 @@ export async function generateNotice(input: z.input<typeof NoticeInput>): Promis
     const apiKey = decryptSecret(encryptedKey)
     const generated = await generateEasyRead(apiKey, {
       noticeType: data.noticeType,
-      title: data.title,
+      title: masked.fields.title,
       date: data.date || null,
-      place: data.place || null,
-      items: data.items,
-      audience: data.audience,
+      place: masked.fields.place || null,
+      items: masked.fields.items ? masked.fields.items.split(ITEMS_SEP) : [],
+      audience: masked.fields.audience,
       level,
-      detail: masked.masked,
+      detail: masked.fields.detail,
     })
 
     const restored = restorePII(generated.text, masked.tokens)

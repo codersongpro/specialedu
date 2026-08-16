@@ -16,12 +16,15 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export const maxDuration = 300
 
 export async function GET(request: Request) {
+  // CRON_SECRET이 설정 안 돼 있으면 검사를 건너뛰지 않고 바로 막는다 —
+  // fail-open이면 아무나 이 경로를 호출해 데모 학교를 마음대로 초기화할 수 있다.
   const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = request.headers.get('authorization')
-    if (auth !== `Bearer ${secret}`) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  if (!secret) {
+    return new Response('CRON_SECRET not configured', { status: 503 })
+  }
+  const auth = request.headers.get('authorization')
+  if (auth !== `Bearer ${secret}`) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   const admin = createAdminClient()
