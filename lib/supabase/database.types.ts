@@ -351,6 +351,18 @@ export type BudgetExpenseRow = {
   updated_at: string
 }
 
+export type PersonalDraftRow = {
+  id: string
+  school_id: string
+  owner_id: string
+  tool: 'lesson_adapt' | 'video_kit'
+  title: string
+  content: string
+  meta: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
 export type AiUsageLogRow = {
   id: number
   school_id: string
@@ -488,6 +500,7 @@ export type Database = {
       ai_usage_logs: Table<AiUsageLogRow>
       budget_lines: Table<BudgetLineRow>
       budget_expenses: Table<BudgetExpenseRow>
+      personal_drafts: Table<PersonalDraftRow>
       behavior_categories: Table<BehaviorCategoryRow>
       pbs_records: Table<PbsRecordRow>
       notifications: Table<NotificationRow>
