@@ -347,6 +347,8 @@ export type BudgetExpenseRow = {
   reviewed_by: string | null
   reviewed_at: string | null
   reject_reason: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type AiUsageLogRow = {
