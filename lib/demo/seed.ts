@@ -135,7 +135,7 @@ export async function seedDemoSchool(
     // 시간강사는 화·목만 출근한다 — 결보강 후보에서 이 조건이 실제로 걸린다
     const workDays = account.employment === 'part_time' ? [2, 4] : [1, 2, 3, 4, 5]
 
-    await db.from('profiles').insert({
+    const { error: profileError } = await db.from('profiles').insert({
       id: created.user.id,
       school_id: schoolId,
       name: account.name,
@@ -144,6 +144,7 @@ export async function seedDemoSchool(
       department_id: deptByName.get('교무부') ?? null,
       work_days: workDays,
     })
+    if (profileError) throw new Error(`${account.email} 프로필 생성 실패: ${profileError.message}`)
     staffIds.push({
       id: created.user.id,
       name: account.name,
@@ -163,7 +164,7 @@ export async function seedDemoSchool(
 
     const workDays = staff.employment === 'part_time' ? [1, 3, 5] : [1, 2, 3, 4, 5]
 
-    await db.from('profiles').insert({
+    const { error: profileError } = await db.from('profiles').insert({
       id: created.user.id,
       school_id: schoolId,
       name: staff.name,
@@ -172,6 +173,7 @@ export async function seedDemoSchool(
       department_id: deptByName.get(pick(DEPARTMENTS, index)) ?? null,
       work_days: workDays,
     })
+    if (profileError) throw new Error(`${email} 프로필 생성 실패: ${profileError.message}`)
     staffIds.push({
       id: created.user.id,
       name: staff.name,
