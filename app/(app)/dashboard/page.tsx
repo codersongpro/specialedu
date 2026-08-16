@@ -119,7 +119,6 @@ export default async function DashboardPage() {
                   </span>
                   <span className="font-medium">{ctx.rooms.get(r.roomId)?.name}</span>
                   <span className="whitespace-nowrap text-[15px] text-ink-soft">{BOOKING_KIND_LABEL[r.kind]}</span>
-                  {r.status === 'pending' ? <Badge tone="warn">승인 대기</Badge> : null}
                 </li>
               ))}
             </ul>

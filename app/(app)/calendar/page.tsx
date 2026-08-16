@@ -58,7 +58,7 @@ export default async function CalendarPage({
     const requester = (r.requester_id && staffName.get(r.requester_id)) || '알 수 없음'
     return {
       id: `reservation:${r.id}`,
-      title: `${roomName.get(r.room_id) ?? '특별실'}${r.status === 'pending' ? ' (승인 대기)' : ''}`,
+      title: roomName.get(r.room_id) ?? '특별실',
       detail: `${requester}${r.purpose ? ` · ${r.purpose}` : ''}`,
       startsOn: r.reserved_date,
       endsOn: r.reserved_date,

@@ -5,6 +5,7 @@ import { getCurrentTerm } from '@/lib/data/context'
 import { loadCandidates, loadWeights } from '@/lib/data/substitution'
 import { formatSpan } from '@/lib/scheduling/time'
 import { scoreCandidates } from '@/lib/substitution/score'
+import { manualAssignmentOptions } from '@/lib/substitution/manual-assignment'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 import { AbsenceForm } from './absence-form'
 import { AssignRow } from './assign-row'
@@ -62,15 +63,19 @@ export default async function SubstitutionsPage() {
   const { weights, longRunThreshold } = await loadWeights(supabase, session.school.id)
 
   // 아직 사람이 안 정해진 건에 대해서만 후보를 계산한다.
-  // 전부 계산하면 화면 한 번 여는 데 조회가 지나치게 늘어난다.
+  // 직접 선택 목록도 이 결과로 배정 가능 여부를 표시하므로 모든 미배정 건을 확인한다.
   const pending = (assignments ?? []).filter((a) => a.status === 'pending')
   const suggestionsByAssignment = new Map<
     string,
     Array<{ teacherId: string; name: string; score: number; reasons: string[]; isPaid: boolean }>
   >()
+  const manualOptionsByAssignment = new Map<
+    string,
+    Array<{ teacherId: string; name: string; isAvailable: boolean; isPaid: boolean }>
+  >()
 
   if (admin) {
-    for (const assignment of pending.slice(0, 12)) {
+    for (const assignment of pending) {
       const absence = (absences ?? []).find((a) => a.id === assignment.absence_id)
       if (!absence) continue
 
@@ -104,6 +109,10 @@ export default async function SubstitutionsPage() {
           reasons: r.breakdown.filter((b) => b.points > 0).map((b) => b.label),
           isPaid: r.isPaid,
         })),
+      )
+      manualOptionsByAssignment.set(
+        assignment.id,
+        manualAssignmentOptions(profiles ?? [], ranked),
       )
     }
   }
@@ -163,6 +172,7 @@ export default async function SubstitutionsPage() {
                       isPaid={assignment.is_paid}
                       canAssign={admin}
                       suggestions={suggestionsByAssignment.get(assignment.id) ?? []}
+                      manualOptions={manualOptionsByAssignment.get(assignment.id) ?? []}
                     />
                   )
                 })}

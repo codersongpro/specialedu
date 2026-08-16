@@ -36,21 +36,12 @@ export function findConflicts(req: BookingRequest, ctx: ScheduleContext): Confli
     if (!overlaps(span, other)) continue
 
     const who = describeUser(other, ctx)
-    if (other.status === 'approved') {
-      conflicts.push({
-        type: 'room_taken',
-        severity: 'block',
-        message: `${formatSpan(other)} ${who} 사용 중`,
-        withId: other.id,
-      })
-    } else {
-      conflicts.push({
-        type: 'room_pending',
-        severity: 'warn',
-        message: `${formatSpan(other)} ${who}가 신청해 둔 상태 (승인 대기)`,
-        withId: other.id,
-      })
-    }
+    conflicts.push({
+      type: 'room_taken',
+      severity: 'block',
+      message: `${formatSpan(other)} ${who} 사용 중`,
+      withId: other.id,
+    })
   }
 
   // --- 사용 불가 구간 --------------------------------------------------------
@@ -94,7 +85,7 @@ export function findConflicts(req: BookingRequest, ctx: ScheduleContext): Confli
 
     for (const other of ctx.reservations) {
       if (other.id === req.reservationId) continue
-      if (other.status !== 'approved') continue
+      if (other.status === 'cancelled' || other.status === 'rejected') continue
       if (other.requesterId !== person.id && other.coTeacherId !== person.id) continue
       if (!overlaps(span, other)) continue
       conflicts.push({
@@ -128,7 +119,7 @@ export function findConflicts(req: BookingRequest, ctx: ScheduleContext): Confli
 
     for (const other of ctx.reservations) {
       if (other.id === req.reservationId) continue
-      if (other.status !== 'approved') continue
+      if (other.status === 'cancelled' || other.status === 'rejected') continue
       if (!overlaps(span, other)) continue
       const otherClassIds = expandToClassIds(other.classId, other.courseGroupId, ctx)
       const clash = intersect(occupiedClassIds, otherClassIds)

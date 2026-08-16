@@ -452,7 +452,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
   const [capacity, setCapacity] = useState('')
   const [featuresText, setFeaturesText] = useState('')
   const [managedBy, setManagedBy] = useState('')
-  const [requiresApproval, setRequiresApproval] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -464,7 +463,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
     setCapacity('')
     setFeaturesText('')
     setManagedBy('')
-    setRequiresApproval(false)
     setError(null)
     setOpen(true)
   }
@@ -476,7 +474,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
     setCapacity(row.capacity?.toString() ?? '')
     setFeaturesText(row.features.join(', '))
     setManagedBy(row.managedBy ?? '')
-    setRequiresApproval(row.requiresApproval)
     setError(null)
     setOpen(true)
   }
@@ -492,7 +489,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
           .map((s) => s.trim())
           .filter(Boolean),
         managedBy: managedBy || null,
-        requiresApproval,
       })
       if (result.error) setError(result.error)
       else setOpen(false)
@@ -555,11 +551,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
           </Field>
         </div>
 
-        <label className="mt-2 flex items-center gap-1.5 text-[14px]">
-          <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} />
-          예약에 승인이 필요함
-        </label>
-
         {error ? <p className="mt-2 text-[13.5px] text-danger">{error}</p> : null}
         <Button onClick={submit} disabled={pending || !name.trim()} className="mt-3 w-full">
           {editingId ? '수정 저장' : '추가'}
@@ -574,7 +565,6 @@ function RoomPanel({ rows, departments }: { rows: RoomRow[]; departments: Depart
               {row.name}
             </span>
             <span className="whitespace-nowrap text-[13.5px] text-ink-soft">{row.roomType}</span>
-            {row.requiresApproval ? <span className="whitespace-nowrap text-[13.5px] text-warn">승인 필요</span> : null}
             <div className="ml-auto flex gap-2">
               <button
                 type="button"

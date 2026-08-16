@@ -132,7 +132,6 @@ const RoomInput = z.object({
   capacity: z.coerce.number().int().min(0).optional(),
   features: z.array(z.string().max(20)).max(15),
   managedBy: z.string().uuid().nullable(),
-  requiresApproval: z.boolean(),
 })
 
 export async function saveRoom(id: string | null, input: z.input<typeof RoomInput>): Promise<FormResult> {
@@ -149,7 +148,7 @@ export async function saveRoom(id: string | null, input: z.input<typeof RoomInpu
     capacity: parsed.data.capacity ?? null,
     features: parsed.data.features,
     managed_by: parsed.data.managedBy,
-    requires_approval: parsed.data.requiresApproval,
+    requires_approval: false,
   }
   const { error } = id
     ? await supabase.from('rooms').update(row).eq('id', id)

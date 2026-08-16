@@ -203,7 +203,6 @@ export const ROOMS: Array<{
   floor: number
   capacity: number
   features: string[]
-  approval?: boolean
 }> = [
   { name: '요리실습실', type: 'cooking', floor: 2, capacity: 12, features: ['조리대', '싱크대', '인덕션'] },
   { name: '바리스타실습실', type: 'vocational', floor: 2, capacity: 10, features: ['에스프레소머신', '싱크대'] },
@@ -213,10 +212,10 @@ export const ROOMS: Array<{
   { name: '음악치료실', type: 'therapy', floor: 3, capacity: 8, features: ['피아노', '타악기', '방음'] },
   { name: '감각통합실', type: 'therapy', floor: 3, capacity: 6, features: ['그네', '볼풀', '매트'] },
   { name: '스누젤렌실', type: 'therapy', floor: 3, capacity: 4, features: ['조명', '음향', '워터베드'] },
-  { name: '체육관', type: 'gym', floor: 1, capacity: 40, features: ['매트', '음향', '농구대'], approval: true },
+  { name: '체육관', type: 'gym', floor: 1, capacity: 40, features: ['매트', '음향', '농구대'] },
   { name: '컴퓨터실', type: 'computer', floor: 2, capacity: 16, features: ['PC', '빔프로젝터'] },
   { name: '도서실', type: 'library', floor: 3, capacity: 20, features: ['빔프로젝터'] },
-  { name: '다목적실', type: 'multipurpose', floor: 1, capacity: 30, features: ['음향', '빔프로젝터'], approval: true },
+  { name: '다목적실', type: 'multipurpose', floor: 1, capacity: 30, features: ['음향', '빔프로젝터'] },
 ]
 
 /**

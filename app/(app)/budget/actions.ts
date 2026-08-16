@@ -3,12 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { extractReceiptFields } from '@/lib/ai/gemini'
-import { formatWon } from '@/lib/format'
-import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
+import { DIRECT_REGISTRATION_STATUS } from '@/lib/workflow/direct-registration'
 
 const RECEIPT_MAX_BYTES = 8 * 1024 * 1024
 
@@ -94,8 +93,7 @@ export interface ExpenseState {
 }
 
 /**
- * 지출 신청(품의). 누구나 넣을 수 있고, 대기중(pending) 상태로 들어간다 —
- * 관리자가 승인해야 배정액에서 실제로 빠진다.
+ * 지출 등록. 같은 학교 예산 항목에 바로 반영한다.
  *
  * 영수증은 여기서 올리지 않는다. scanReceipt()가 사진을 고르는 순간 이미
  * 올려서 금액·날짜를 자동으로 채워 두고, 여기서는 그 경로만 넘겨받아
@@ -125,6 +123,14 @@ export async function createExpense(
     input.receiptPath && input.receiptPath.startsWith(`${session.school.id}/`) ? input.receiptPath : null
 
   const supabase = await createClient()
+  const { data: budgetLine } = await supabase
+    .from('budget_lines')
+    .select('id')
+    .eq('id', input.budgetLineId)
+    .eq('school_id', session.school.id)
+    .maybeSingle()
+  if (!budgetLine) return { error: '이 학교의 예산 항목을 골라 주세요.' }
+
   const { data: created, error } = await supabase
     .from('budget_expenses')
     .insert({
@@ -135,11 +141,12 @@ export async function createExpense(
       description: input.description,
       spent_on: input.spentOn,
       receipt_path: receiptPath,
+      status: DIRECT_REGISTRATION_STATUS,
     })
     .select('id')
     .single()
 
-  if (error || !created) return { error: '신청하지 못했습니다. 예산 항목을 다시 확인해 주세요.' }
+  if (error || !created) return { error: '등록하지 못했습니다. 예산 항목을 다시 확인해 주세요.' }
 
   await writeAudit({
     schoolId: session.school.id,
@@ -155,52 +162,7 @@ export async function createExpense(
   return { ok: true }
 }
 
-/** 지출 승인·반려 — 관리자·부장만. */
-export async function reviewExpense(formData: FormData): Promise<void> {
-  const session = await requireSession()
-  if (!isAdmin(session.profile)) return
-
-  const id = String(formData.get('id') ?? '')
-  const decision = String(formData.get('decision') ?? '')
-  if (!id || (decision !== 'approved' && decision !== 'rejected')) return
-  const reason = decision === 'rejected' ? String(formData.get('reason') ?? '').slice(0, 300) : null
-
-  const supabase = await createClient()
-  const { data: updated } = await supabase
-    .from('budget_expenses')
-    .update({
-      status: decision,
-      reviewed_by: session.userId,
-      reviewed_at: new Date().toISOString(),
-      reject_reason: reason,
-    })
-    .eq('id', id)
-    .select('requested_by, amount, description')
-    .single()
-
-  await writeAudit({
-    schoolId: session.school.id,
-    actorId: session.userId,
-    actorName: session.profile.name,
-    action: decision === 'approved' ? AUDIT_ACTIONS.budgetExpenseApprove : AUDIT_ACTIONS.budgetExpenseReject,
-    targetTable: 'budget_expenses',
-    targetId: id,
-  })
-
-  if (updated) {
-    await notify({
-      schoolId: session.school.id,
-      profileId: updated.requested_by,
-      title: decision === 'approved' ? '지출 신청이 승인되었습니다' : '지출 신청이 반려되었습니다',
-      body: `${formatWon(updated.amount)} · ${updated.description}`,
-      link: '/budget',
-    })
-  }
-
-  revalidatePath('/budget')
-}
-
-/** 신청 취소 — 신청 본인이 대기중일 때만(RLS 가 최종 확인). */
+/** 등록 취소 — 등록자 본인 또는 관리자만(RLS가 최종 확인). */
 export async function deleteExpense(formData: FormData): Promise<void> {
   await requireSession()
   const id = String(formData.get('id') ?? '')

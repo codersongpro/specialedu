@@ -36,19 +36,20 @@ export default async function BudgetPage() {
   const departmentName = new Map((departments ?? []).map((d) => [d.id, d.name]))
   const className = new Map((classes ?? []).map((c) => [c.id, c.name]))
   const staffName = new Map((staff ?? []).map((s) => [s.id, s.name]))
+  const visibleExpenses = (expenses ?? []).filter((expense) => expense.status !== 'rejected')
 
   const targetLabel = (line: { scope: string; department_id: string | null; class_id: string | null }) =>
     line.scope === 'department'
       ? (departmentName.get(line.department_id ?? '') ?? '부서')
       : (className.get(line.class_id ?? '') ?? '학급')
 
-  // 항목별 승인된 지출 합
-  const approvedByLine = new Map<string, number>()
-  for (const expense of expenses ?? []) {
+  // 항목별 등록된 지출 합. 과거 반려 기록은 집행액에서 제외한다.
+  const registeredByLine = new Map<string, number>()
+  for (const expense of visibleExpenses) {
     if (expense.status !== 'approved') continue
-    approvedByLine.set(
+    registeredByLine.set(
       expense.budget_line_id,
-      (approvedByLine.get(expense.budget_line_id) ?? 0) + expense.amount,
+      (registeredByLine.get(expense.budget_line_id) ?? 0) + expense.amount,
     )
   }
 
@@ -62,21 +63,19 @@ export default async function BudgetPage() {
       spent: 0,
     }
     entry.allocated += line.allocated_amount
-    entry.spent += approvedByLine.get(line.id) ?? 0
+    entry.spent += registeredByLine.get(line.id) ?? 0
     deptTotals.set(line.department_id, entry)
   }
 
   const lineNameById = new Map((lines ?? []).map((l) => [l.id, l.name]))
-  const expenseItems: ExpenseItem[] = (expenses ?? []).map((e) => ({
+  const expenseItems: ExpenseItem[] = visibleExpenses.map((e) => ({
     id: e.id,
     budgetLineName: lineNameById.get(e.budget_line_id) ?? '(삭제된 항목)',
     requesterName: (e.requested_by && staffName.get(e.requested_by)) || '알 수 없음',
     amount: e.amount,
     description: e.description,
     spentOn: e.spent_on,
-    status: e.status,
     receiptPath: e.receipt_path,
-    rejectReason: e.reject_reason,
     canDelete: e.requested_by === session.userId || isAdmin(session.profile),
   }))
 
@@ -85,7 +84,7 @@ export default async function BudgetPage() {
       <RealtimeRefresh schoolId={session.school.id} tables={['budget_lines', 'budget_expenses']} />
       <PageHeader
         title="학급·부서 예산"
-        description={`${fiscalYear}년 예산 배정과 지출 신청·승인 현황입니다.`}
+        description={`${fiscalYear}년 예산 배정과 지출 등록 현황입니다.`}
         actions={
           <>
             {isAdmin(session.profile) ? (
@@ -143,13 +142,13 @@ export default async function BudgetPage() {
                   <th className="px-4 py-2 font-medium">배정 대상</th>
                   <th className="px-4 py-2 font-medium">항목</th>
                   <th className="px-4 py-2 font-medium">배정액</th>
-                  <th className="px-4 py-2 font-medium">승인 집행액</th>
+                  <th className="px-4 py-2 font-medium">등록 집행액</th>
                   <th className="px-4 py-2 font-medium">잔액</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {(lines ?? []).map((line) => {
-                  const spent = approvedByLine.get(line.id) ?? 0
+                  const spent = registeredByLine.get(line.id) ?? 0
                   const remaining = line.allocated_amount - spent
                   return (
                     <tr key={line.id}>
@@ -172,8 +171,8 @@ export default async function BudgetPage() {
       </Card>
 
       <Card>
-        <h2 className="border-b border-line px-4 py-3 text-[17px] font-semibold">지출 신청 내역</h2>
-        <ExpenseList items={expenseItems} isAdmin={isAdmin(session.profile)} />
+        <h2 className="border-b border-line px-4 py-3 text-[17px] font-semibold">지출 등록 내역</h2>
+        <ExpenseList items={expenseItems} />
       </Card>
     </>
   )

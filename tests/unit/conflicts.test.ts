@@ -80,7 +80,7 @@ describe('과정별 시정 차이', () => {
 })
 
 describe('특별실 중복', () => {
-  it('승인된 예약은 저장을 막고, 대기 중 예약은 경고만 한다', () => {
+  it('기존 대기 예약도 즉시 확정 예약처럼 저장을 막는다', () => {
     const pending = makeContext({
       reservations: [
         reservation({ roomId: 'room-gym', course: 'high', periodNo: 2, status: 'pending', classId: 'cls-h3b' }),
@@ -90,8 +90,8 @@ describe('특별실 중복', () => {
       bookingRequest({ roomId: 'room-gym', course: 'high', periodNo: 2, classId: 'cls-h3a', requesterId: 't-lee' }),
       pending,
     )
-    expect(hasBlocking(conflicts)).toBe(false)
-    expect(conflicts.some((c) => c.type === 'room_pending')).toBe(true)
+    expect(hasBlocking(conflicts)).toBe(true)
+    expect(conflicts.some((c) => c.type === 'room_taken')).toBe(true)
   })
 
   it('취소·반려된 예약은 무시한다', () => {

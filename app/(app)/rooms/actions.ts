@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { findConflicts, hasBlocking } from '@/lib/scheduling/conflicts'
-import { formatKoreanDate, isoDayOfWeek } from '@/lib/date'
+import { isoDayOfWeek } from '@/lib/date'
 import { getCurrentTerm, loadScheduleContext } from '@/lib/data/context'
-import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
-import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
+import { createClient, requireSession } from '@/lib/supabase/server'
+import { DIRECT_REGISTRATION_STATUS } from '@/lib/workflow/direct-registration'
 
 const CreateInput = z.object({
   roomId: z.string().uuid(),
@@ -102,10 +102,6 @@ export async function createReservation(
   }
 
   const room = ctx.rooms.get(input.roomId)
-  // 승인이 필요한 특별실은 대기 상태로 들어간다.
-  // 관리자가 직접 잡는 건 바로 확정한다.
-  const status = room?.requiresApproval && !isAdmin(session.profile) ? 'pending' : 'approved'
-
   const { error } = await supabase.from('room_reservations').insert({
     school_id: session.school.id,
     room_id: input.roomId,
@@ -117,7 +113,7 @@ export async function createReservation(
     requester_id: session.userId,
     co_teacher_id: input.coTeacherId,
     kind: input.kind,
-    status,
+    status: DIRECT_REGISTRATION_STATUS,
     purpose: input.purpose,
   })
 
@@ -162,50 +158,6 @@ export async function cancelReservation(formData: FormData): Promise<void> {
       action: AUDIT_ACTIONS.reservationCancel,
       targetTable: 'room_reservations',
       targetId: id,
-    })
-  }
-
-  revalidatePath('/rooms')
-}
-
-export async function approveReservation(formData: FormData): Promise<void> {
-  const session = await requireSession()
-  if (!isAdmin(session.profile)) return
-
-  const id = String(formData.get('id') ?? '')
-  const decision = String(formData.get('decision') ?? '')
-  if (!id || !['approved', 'rejected'].includes(decision)) return
-
-  const supabase = await createClient()
-  const { data: updated } = await supabase
-    .from('room_reservations')
-    .update({
-      status: decision as 'approved' | 'rejected',
-      approved_by: session.userId,
-      approved_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select('requester_id, reserved_date, room_id')
-    .single()
-
-  await writeAudit({
-    schoolId: session.school.id,
-    actorId: session.userId,
-    actorName: session.profile.name,
-    action: AUDIT_ACTIONS.reservationApprove,
-    targetTable: 'room_reservations',
-    targetId: id,
-    meta: { decision },
-  })
-
-  if (updated) {
-    const { data: room } = await supabase.from('rooms').select('name').eq('id', updated.room_id).maybeSingle()
-    await notify({
-      schoolId: session.school.id,
-      profileId: updated.requester_id,
-      title: decision === 'approved' ? '특별실 예약이 승인되었습니다' : '특별실 예약이 반려되었습니다',
-      body: `${room?.name ?? '특별실'} · ${formatKoreanDate(updated.reserved_date)}`,
-      link: '/rooms',
     })
   }
 

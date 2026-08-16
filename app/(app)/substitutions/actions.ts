@@ -4,8 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { formatKoreanDate, isoDayOfWeek, shiftDays } from '@/lib/date'
 import { getCurrentTerm } from '@/lib/data/context'
+import { loadCandidates, loadWeights } from '@/lib/data/substitution'
 import { notify } from '@/lib/notifications'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
+import { manualAssignmentDetails } from '@/lib/substitution/manual-assignment'
+import { scoreCandidates } from '@/lib/substitution/score'
 import { createClient, isAdmin, requireSession } from '@/lib/supabase/server'
 
 const AbsenceInput = z.object({
@@ -128,24 +131,71 @@ export async function assignSubstitute(formData: FormData): Promise<void> {
   const session = await requireSession()
   if (!isAdmin(session.profile)) return
 
-  const assignmentId = String(formData.get('assignmentId') ?? '')
-  const teacherId = String(formData.get('teacherId') ?? '')
-  const score = Number(formData.get('score') ?? 0)
-  const isPaid = formData.get('isPaid') === '1'
-  if (!assignmentId || !teacherId) return
+  const parsed = z.object({
+    assignmentId: z.string().uuid(),
+    teacherId: z.string().uuid(),
+  }).safeParse({
+    assignmentId: formData.get('assignmentId'),
+    teacherId: formData.get('teacherId'),
+  })
+  if (!parsed.success) return
+  const { assignmentId, teacherId } = parsed.data
 
   const supabase = await createClient()
+  const { data: assignment } = await supabase
+    .from('substitution_assignments')
+    .select('id, absence_id, assign_date, course, period_no, starts_min, ends_min, subject_id, class_id')
+    .eq('id', assignmentId)
+    .eq('school_id', session.school.id)
+    .eq('status', 'pending')
+    .maybeSingle()
+  if (!assignment) return
+
+  const [{ data: absence }, term] = await Promise.all([
+    supabase
+      .from('absences')
+      .select('teacher_id')
+      .eq('id', assignment.absence_id)
+      .eq('school_id', session.school.id)
+      .maybeSingle(),
+    getCurrentTerm(supabase, session.school.id),
+  ])
+  if (!absence || !term) return
+
+  const target = {
+    date: assignment.assign_date,
+    dayOfWeek: isoDayOfWeek(assignment.assign_date),
+    course: assignment.course,
+    grade: null,
+    periodNo: assignment.period_no,
+    startsMin: assignment.starts_min,
+    endsMin: assignment.ends_min,
+    subjectId: assignment.subject_id,
+    classId: assignment.class_id,
+    roomFloor: null,
+    absentTeacherId: absence.teacher_id,
+  }
+  const [candidates, { weights, longRunThreshold }] = await Promise.all([
+    loadCandidates(supabase, { schoolId: session.school.id, termId: term.id, target }),
+    loadWeights(supabase, session.school.id),
+  ])
+  const { ranked } = scoreCandidates(target, candidates, weights, longRunThreshold)
+  const selected = manualAssignmentDetails(teacherId, ranked)
+  if (!selected) return
+
   const { data: updated, error } = await supabase
     .from('substitution_assignments')
     .update({
       assigned_teacher_id: teacherId,
       status: 'assigned',
-      score: Number.isFinite(score) ? score : null,
-      is_paid: isPaid,
+      score: selected.score,
+      is_paid: selected.isPaid,
       assigned_by: session.userId,
       assigned_at: new Date().toISOString(),
     })
     .eq('id', assignmentId)
+    .eq('school_id', session.school.id)
+    .eq('status', 'pending')
     .select('assign_date, period_no')
     .single()
 
@@ -157,7 +207,7 @@ export async function assignSubstitute(formData: FormData): Promise<void> {
       action: AUDIT_ACTIONS.substitutionAssign,
       targetTable: 'substitution_assignments',
       targetId: assignmentId,
-      meta: { teacherId, score },
+      meta: { teacherId, score: selected.score },
     })
 
     if (updated) {

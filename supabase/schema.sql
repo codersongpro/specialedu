@@ -1332,7 +1332,7 @@ create table public.budget_expenses (
   amount        integer not null check (amount > 0),
   description   text not null,
   spent_on      date not null default current_date,
-  status        text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  status        text not null default 'approved' check (status in ('pending', 'approved', 'rejected')),
   receipt_path  text,
   reviewed_by   uuid references public.profiles(id) on delete set null,
   reviewed_at   timestamptz,
@@ -1377,7 +1377,7 @@ create policy budget_expenses_update_admin on public.budget_expenses for update
   with check (public.same_school(school_id) and public.is_admin());
 
 create policy budget_expenses_delete_owner on public.budget_expenses for delete
-  using (public.same_school(school_id) and requested_by = auth.uid() and status = 'pending');
+  using (public.same_school(school_id) and requested_by = auth.uid());
 create policy budget_expenses_delete_admin on public.budget_expenses for delete
   using (public.same_school(school_id) and public.is_admin());
 

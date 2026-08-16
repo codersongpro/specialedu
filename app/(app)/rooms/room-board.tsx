@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Badge, Button, Card, Field, inputClass } from '@/components/ui'
+import { Button, Card, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { formatKoreanDateWithDay, shiftDays, todayString } from '@/lib/date'
 import { findConflicts, hasBlocking } from '@/lib/scheduling/conflicts'
@@ -224,18 +224,15 @@ function ReservedCell({
     ctx.teacherNames.get(reservation.requesterId) ||
     '예약됨'
 
-  const pending = reservation.status === 'pending'
-
   return (
     <div
       className={cn(
         'min-h-14 rounded-lg border border-line p-2',
-        pending ? 'border-warn/30 bg-warn-soft' : COURSE_TONE[reservation.course],
+        COURSE_TONE[reservation.course],
       )}
     >
       <div className="flex items-start justify-between gap-1">
         <span className="text-xs font-medium">{who}</span>
-        {pending ? <Badge tone="warn">대기</Badge> : null}
       </div>
       <p className="mt-0.5 text-[11px] text-ink-soft">
         {BOOKING_KIND_LABEL[reservation.kind]}
@@ -469,11 +466,8 @@ function BookingPanel(
 
         <div className="sm:col-span-2 flex items-center gap-2">
           <Button type="submit" disabled={pending || blocked || !target}>
-            {pending ? '저장 중' : room?.requiresApproval ? '예약 신청' : '예약하기'}
+            {pending ? '저장 중' : '예약하기'}
           </Button>
-          {room?.requiresApproval ? (
-            <span className="text-xs text-ink-soft">승인이 필요한 특별실입니다</span>
-          ) : null}
         </div>
       </form>
 

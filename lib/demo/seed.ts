@@ -4,6 +4,8 @@ import { formatWon } from '@/lib/format'
 import { encryptSecret } from '@/lib/security/crypto'
 import type { Database } from '@/lib/supabase/database.types'
 import { overlaps } from '@/lib/scheduling/time'
+import { DIRECT_REGISTRATION_STATUS } from '@/lib/workflow/direct-registration'
+import { buildTrainingRoomReservations } from './training-room-reservations'
 import {
   BEHAVIOR_CATEGORIES,
   BUDGET_EXPENSE_DESCRIPTIONS,
@@ -318,7 +320,7 @@ export async function seedDemoSchool(
         floor: room.floor,
         capacity: room.capacity,
         features: room.features,
-        requires_approval: room.approval ?? false,
+        requires_approval: false,
         managed_by: deptByName.get('교무부') ?? null,
       })),
     )
@@ -458,6 +460,30 @@ export async function seedDemoSchool(
     kind: 'regular',
   }
 
+  // 연수 당일에는 주말이어도 특별실 예약 화면이 비어 보이지 않아야 한다.
+  // 과정 탭별 예시를 고정으로 두고, 아래 무작위 데이터는
+  // 이 시간과 겹치지 않도록 roomSpans에 먼저 기록한다.
+  const trainingReservations = buildTrainingRoomReservations({
+    schoolId,
+    reservedDate: toDate(0),
+    rooms: rooms ?? [],
+    classes: (classes ?? []).map((schoolClass) => ({
+      id: schoolClass.id,
+      name: schoolClass.name,
+      requesterId: schoolClass.homeroom_teacher_id,
+    })),
+  })
+
+  for (const reservation of trainingReservations) {
+    const period = PERIODS[reservation.course]?.find(([periodNo]) => periodNo === reservation.period_no)
+    if (!period) throw new Error(`연수용 예약의 교시를 찾을 수 없습니다: ${reservation.course} ${reservation.period_no}`)
+    const span = { startsMin: toMinutes(period[2]), endsMin: toMinutes(period[3]) }
+    if (!bookRoom(reservation.room_id, reservation.reserved_date, span)) {
+      throw new Error('연수용 특별실 예약 시간이 겹칩니다')
+    }
+    reservationRows.push(reservation)
+  }
+
   // 고교학점제 선택과목 예약부터 먼저 자리를 잡는다.
   // 학급이 아니라 수강그룹으로 잡히므로, 소속 학급(고3-1, 고3-2)이 함께 묶인다.
   // 그 시간에 고3-1 을 다른 방에 넣으려 하면 충돌로 걸린다 — 데모에서 확인해 볼 수 있다.
@@ -518,8 +544,6 @@ export async function seedDemoSchool(
 
       if (!bookRoom(room.id, date, span)) continue
 
-      const status = room.requires_approval && Math.random() < 0.2 ? 'pending' : 'approved'
-
       reservationRows.push({
         school_id: schoolId,
         room_id: room.id,
@@ -530,7 +554,7 @@ export async function seedDemoSchool(
         // 예약은 그 학급 담임 이름으로 들어간다
         requester_id: cls.homeroom_teacher_id ?? teachers[0]!.id,
         kind: profile.kind,
-        status,
+        status: DIRECT_REGISTRATION_STATUS,
         purpose: randPick(profile.purposes),
       })
       booked += 1
@@ -541,7 +565,7 @@ export async function seedDemoSchool(
     .from('room_reservations')
     .insert(reservationRows as never)
   if (reservationError) throw reservationError
-  log(`  특별실 예약 ${reservationRows.length}건 (5주 치 무작위 · 승인 대기·선택과목 포함)`)
+  log(`  특별실 예약 ${reservationRows.length}건 (5주 치 무작위 · 선택과목 포함)`)
 
   // 점검으로 막아 둔 구간 하나
   await db.from('room_blackouts').insert({
@@ -749,7 +773,7 @@ export async function seedDemoSchool(
 
   // --- 예산(살림) 샘플 -------------------------------------------------------
   // 체험하기로 들어갔을 때 "살림" 메뉴가 비어 보이지 않도록, 부서별·학급별
-  // 예산 항목과 승인 대기·승인·반려가 섞인 지출 신청을 채운다.
+  // 예산 항목과 바로 반영되는 지출 등록을 채운다.
   const budgetAdmin = staffIds.find((s) => s.role === 'admin')?.id ?? teachers[0]!.id
 
   const budgetLineRows: Array<Record<string, unknown>> = []
@@ -787,8 +811,6 @@ export async function seedDemoSchool(
   for (const line of budgetLines ?? []) {
     const count = randInt(2, 4)
     for (let i = 0; i < count; i += 1) {
-      const roll = Math.random()
-      const status = roll < 0.7 ? 'approved' : roll < 0.9 ? 'pending' : 'rejected'
       const amount = Math.min(line.allocated_amount, randInt(3, 25) * 10000)
       const requester = randPick(teachers)
 
@@ -799,12 +821,7 @@ export async function seedDemoSchool(
         amount,
         description: randPick(BUDGET_EXPENSE_DESCRIPTIONS),
         spent_on: toDate(-randInt(0, 45)),
-        status,
-      }
-      if (status !== 'pending') {
-        row.reviewed_by = budgetAdmin
-        row.reviewed_at = new Date().toISOString()
-        if (status === 'rejected') row.reject_reason = '올해 예산을 초과해 반려합니다'
+        status: DIRECT_REGISTRATION_STATUS,
       }
       budgetExpenseRows.push(row)
     }
@@ -818,18 +835,16 @@ export async function seedDemoSchool(
   log(`  예산 항목 ${budgetLineRows.length}개 · 지출 ${budgetExpenseRows.length}건`)
 
   // --- 알림 샘플 --------------------------------------------------------------
-  // 지출 승인·반려 결과를 신청한 사람에게 알림으로 보낸다 — 실제 앱이
-  // reviewExpense()에서 하는 것과 같은 모양이다. 체험하기로 teacher@ 등을
+  // 지출 등록 결과를 신청한 사람에게 알림으로 보낸다. 체험하기로 teacher@ 등을
   // 뽑아 들어갔을 때 종 모양 알림 아이콘이 비어 있지 않게 하려는 목적.
   const notificationRows = (budgetExpenses ?? [])
-    .filter((expense) => expense.status !== 'pending')
     .map((expense) => {
       const daysAgo = randInt(0, 10)
       const createdAt = addDays(today, -daysAgo).toISOString()
       return {
         school_id: schoolId,
         profile_id: expense.requested_by!,
-        title: expense.status === 'approved' ? '지출 신청이 승인되었습니다' : '지출 신청이 반려되었습니다',
+        title: '지출이 등록되었습니다',
         body: `${formatWon(expense.amount)} · ${expense.description}`,
         link: '/budget',
         read_at: Math.random() < 0.5 ? createdAt : null,

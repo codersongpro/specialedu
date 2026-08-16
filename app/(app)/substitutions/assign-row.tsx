@@ -24,6 +24,7 @@ export function AssignRow({
   isPaid,
   canAssign,
   suggestions,
+  manualOptions,
 }: {
   assignmentId: string
   date: string
@@ -36,6 +37,7 @@ export function AssignRow({
   isPaid: boolean
   canAssign: boolean
   suggestions: Suggestion[]
+  manualOptions: Array<{ teacherId: string; name: string; isAvailable: boolean; isPaid: boolean }>
 }) {
   const [open, setOpen] = useState(false)
 
@@ -108,6 +110,27 @@ export function AssignRow({
               ))}
             </ul>
           )}
+
+          <form action={assignSubstitute} className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3">
+            <input type="hidden" name="assignmentId" value={assignmentId} />
+            <label className="flex min-w-52 flex-1 flex-col gap-1 text-xs font-medium text-ink-soft">
+              직접 선택
+              <select
+                name="teacherId"
+                required
+                defaultValue=""
+                className="h-9 rounded-md border border-line bg-surface px-2 text-sm text-ink"
+              >
+                <option value="" disabled>보강 교사를 고르세요</option>
+                {manualOptions.map((option) => (
+                  <option key={option.teacherId} value={option.teacherId} disabled={!option.isAvailable}>
+                    {option.name}{option.isPaid ? ' · 시간강사' : ''}{option.isAvailable ? '' : ' · 배정 불가'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" variant="secondary" className="h-9">직접 배정</Button>
+          </form>
         </div>
       ) : null}
     </li>

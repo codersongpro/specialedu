@@ -160,7 +160,7 @@ export function ExpenseFormModal({
               </Field>
 
               <p className="text-[13px] text-ink-soft">
-                신청하면 대기 상태로 들어가고, 관리자가 승인해야 예산에서 실제로 빠집니다.
+                등록하면 예산 집행액과 잔액에 바로 반영됩니다.
               </p>
 
               {state.error ? (
@@ -169,11 +169,11 @@ export function ExpenseFormModal({
                 </p>
               ) : null}
               {state.ok ? (
-                <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok">신청했습니다</p>
+                <p className="rounded-lg bg-ok-soft px-3 py-2 text-sm text-ok">등록했습니다</p>
               ) : null}
 
               <Button type="submit" disabled={pending || scanning} className="w-full">
-                {pending ? '저장 중' : '신청'}
+                {pending ? '저장 중' : '등록'}
               </Button>
             </form>
           </div>
