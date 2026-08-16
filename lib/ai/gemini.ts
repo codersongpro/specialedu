@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { lessonAdaptPrompt, type LessonAdaptInput } from '@/lib/lesson-adapt/prompt'
+
 /**
  * Gemini 호출 — 이 앱에서 Gemini API 를 실제로 부르는 코드가 모여 있다.
  *
@@ -176,4 +178,12 @@ ${input.subject ? `교과: ${input.subject}` : ''}
     : []
   if (queries.length === 0) throw new Error('검색어를 만들지 못했습니다')
   return queries.slice(0, 5)
+}
+
+export async function generateLessonAdaptation(apiKey: string, input: LessonAdaptInput): Promise<string> {
+  const text = await callGemini(apiKey, [{ text: lessonAdaptPrompt(input) }])
+  const record = parseJsonRecord(text)
+  const result = typeof record.result === 'string' ? record.result.trim() : ''
+  if (!result) throw new Error('Gemini 응답을 읽을 수 없습니다')
+  return result
 }
