@@ -27,12 +27,17 @@ const NOTICE: Record<string, string> = {
   blocked: '이 계정은 데모용이 아닙니다. 아래에서 이메일로 로그인하세요.',
 }
 
+const REASON_NOTICE: Record<string, string> = {
+  timeout:
+    '자리를 비운 시간이 길어 자동으로 로그아웃되었습니다. 민감정보 구역일수록 더 짧게 끊깁니다. 다시 로그인해 주세요.',
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; demo?: string }>
+  searchParams: Promise<{ next?: string; demo?: string; reason?: string }>
 }) {
-  const { next, demo } = await searchParams
+  const { next, demo, reason } = await searchParams
   const showDemo = await hasDemoSchool()
 
   return (
@@ -47,6 +52,12 @@ export default async function LoginPage({
         {demo && NOTICE[demo] ? (
           <p className="mt-4 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
             {NOTICE[demo]}
+          </p>
+        ) : null}
+
+        {reason && REASON_NOTICE[reason] ? (
+          <p className="mt-4 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+            {REASON_NOTICE[reason]}
           </p>
         ) : null}
 

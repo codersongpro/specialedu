@@ -1,12 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { SESSION_TIMEOUT_MIN, sensitivityForPath } from '@/lib/security/sensitivity'
 
 /**
- * 세션 갱신 + 로그인 확인.
+ * 세션 갱신 + 로그인 확인 + 자리 비움 시간제한.
  *
  * 여기서 supabase.auth.getUser() 를 부르는 것이 중요하다. 만료된 토큰을
  * 갱신해 쿠키에 다시 심어야 서버 컴포넌트가 로그인 상태를 제대로 본다.
+ *
+ * SESSION_TIMEOUT_MIN(lib/security/sensitivity.ts)이 정의만 돼 있고
+ * 실제로 걸리지 않던 걸 여기서 강제한다. 마지막 활동 시각을 서버가
+ * 쿠키(httpOnly)로 들고 있다가, 지금 보려는 화면의 민감도 등급에 맞는
+ * 제한 시간을 넘겼으면 로그아웃시킨다. 클라이언트 JS로 하면 꺼버리면
+ * 그만이라 서버에서 막아야 의미가 있다.
  */
+const ACTIVITY_COOKIE = 'ha_activity'
 
 /**
  * 로그인 없이 열 수 있는 경로.
@@ -69,6 +77,32 @@ export async function middleware(request: NextRequest) {
 
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  if (user && !isPublic) {
+    const timeoutMin = SESSION_TIMEOUT_MIN[sensitivityForPath(pathname)]
+    const lastActivity = request.cookies.get(ACTIVITY_COOKIE)?.value
+    const now = Date.now()
+
+    if (lastActivity) {
+      const elapsedMin = (now - Number(lastActivity)) / 60000
+      if (Number.isFinite(elapsedMin) && elapsedMin > timeoutMin) {
+        await supabase.auth.signOut()
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('reason', 'timeout')
+        const timeoutResponse = NextResponse.redirect(loginUrl)
+        timeoutResponse.cookies.delete(ACTIVITY_COOKIE)
+        return timeoutResponse
+      }
+    }
+
+    response.cookies.set(ACTIVITY_COOKIE, String(now), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    })
   }
 
   return response
