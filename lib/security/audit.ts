@@ -65,6 +65,7 @@ export const AUDIT_ACTIONS = {
   absenceCreate: 'absence.create',
   substitutionAssign: 'substitution.assign',
   eventCreate: 'event.create',
+  timetableImport: 'timetable.import',
   budgetLineCreate: 'budget_line.create',
   budgetExpenseCreate: 'budget_expense.create',
   budgetExpenseApprove: 'budget_expense.approve',

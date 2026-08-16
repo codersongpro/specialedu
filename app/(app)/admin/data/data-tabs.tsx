@@ -17,6 +17,7 @@ import {
   toggleRoomActive,
   toggleStudentActive,
 } from './actions'
+import { TimetableImportPanel } from './timetable-import-panel'
 
 interface StaffOption {
   id: string
@@ -59,7 +60,7 @@ interface StudentRow {
   isActive: boolean
 }
 
-const TABS = ['부서', '교과', '학급', '특별실', '학생'] as const
+const TABS = ['부서', '교과', '학급', '특별실', '학생', '시간표 업로드'] as const
 type Tab = (typeof TABS)[number]
 
 const COURSES = [
@@ -111,6 +112,9 @@ export function DataTabs({
         {tab === '학급' ? <ClassPanel rows={classes} staff={staff} /> : null}
         {tab === '특별실' ? <RoomPanel rows={rooms} departments={departments} /> : null}
         {tab === '학생' ? <StudentPanel rows={students} classes={classes} /> : null}
+        {tab === '시간표 업로드' ? (
+          <TimetableImportPanel classNames={classes.map((c) => c.name)} />
+        ) : null}
       </div>
     </div>
   )
