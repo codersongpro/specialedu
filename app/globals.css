@@ -71,6 +71,25 @@ body {
   }
 }
 
+/* 쉬운글 안내문의 "인쇄" 버튼 — #notice-print-area 만 종이에 남기고
+   사이드바·폼·버튼은 전부 숨긴다. id 하나로 범용 인쇄 격리를 구현한다. */
+@media print {
+  body:has(#notice-print-area) * {
+    visibility: hidden;
+  }
+  body:has(#notice-print-area) #notice-print-area,
+  body:has(#notice-print-area) #notice-print-area * {
+    visibility: visible;
+  }
+  body:has(#notice-print-area) #notice-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: none;
+    padding: 0;
+  }
+}
+
 /* docs/사용설명서.md 를 렌더링하는 /help 전용 타이포그래피.
    표가 넓어도 페이지 전체가 가로로 밀리지 않도록 표 자체에 스크롤을 준다. */
 .help-prose {

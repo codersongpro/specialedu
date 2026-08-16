@@ -80,7 +80,7 @@ export const NAV: NavCategory[] = [
     label: '수업 도구함',
     sensitivity: 'external_ai',
     items: [
-      { href: '/toolbox/easy-read', label: '쉬운글 안내문', planned: true },
+      { href: '/toolbox/easy-read', label: '쉬운글 안내문' },
       { href: '/toolbox/media', label: '수업 자료 찾기', planned: true },
     ],
   },
