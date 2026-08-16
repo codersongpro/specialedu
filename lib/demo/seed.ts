@@ -1,10 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDays, format } from 'date-fns'
+import { formatWon } from '@/lib/format'
 import { encryptSecret } from '@/lib/security/crypto'
 import type { Database } from '@/lib/supabase/database.types'
 import { overlaps } from '@/lib/scheduling/time'
 import {
   BEHAVIOR_CATEGORIES,
+  BUDGET_EXPENSE_DESCRIPTIONS,
+  BUDGET_LINE_NAMES,
   CLASSES,
   COURSE_GROUPS,
   DEMO_ACCOUNTS,
@@ -48,6 +51,8 @@ export interface SeedSummary {
   students: number
   safetyProtocols: number
   iepGoals: number
+  budgetExpenses: number
+  notifications: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
 
@@ -683,6 +688,101 @@ export async function seedDemoSchool(
   }
   log(`  IEP 목표 ${iepGoalRows.length}건 (학생 ${iepStudents.length}명) · 진도 기록 ${iepProgressRows.length}건`)
 
+  // --- 예산(살림) 샘플 -------------------------------------------------------
+  // 체험하기로 들어갔을 때 "살림" 메뉴가 비어 보이지 않도록, 부서별·학급별
+  // 예산 항목과 승인 대기·승인·반려가 섞인 지출 신청을 채운다.
+  const budgetAdmin = staffIds.find((s) => s.role === 'admin')?.id ?? teachers[0]!.id
+
+  const budgetLineRows: Array<Record<string, unknown>> = []
+  for (const deptId of deptByName.values()) {
+    budgetLineRows.push({
+      school_id: schoolId,
+      fiscal_year: year,
+      scope: 'department',
+      department_id: deptId,
+      name: randPick(BUDGET_LINE_NAMES),
+      allocated_amount: randInt(30, 200) * 10000,
+      created_by: budgetAdmin,
+    })
+  }
+  const budgetClasses = (classes ?? []).filter((_, i) => i % 4 === 0)
+  for (const cls of budgetClasses) {
+    budgetLineRows.push({
+      school_id: schoolId,
+      fiscal_year: year,
+      scope: 'class',
+      class_id: cls.id,
+      name: randPick(BUDGET_LINE_NAMES),
+      allocated_amount: randInt(10, 60) * 10000,
+      created_by: budgetAdmin,
+    })
+  }
+
+  const { data: budgetLines, error: budgetLinesError } = await db
+    .from('budget_lines')
+    .insert(budgetLineRows as never)
+    .select('id, allocated_amount')
+  if (budgetLinesError) throw budgetLinesError
+
+  const budgetExpenseRows: Array<Record<string, unknown>> = []
+  for (const line of budgetLines ?? []) {
+    const count = randInt(2, 4)
+    for (let i = 0; i < count; i += 1) {
+      const roll = Math.random()
+      const status = roll < 0.7 ? 'approved' : roll < 0.9 ? 'pending' : 'rejected'
+      const amount = Math.min(line.allocated_amount, randInt(3, 25) * 10000)
+      const requester = randPick(teachers)
+
+      const row: Record<string, unknown> = {
+        school_id: schoolId,
+        budget_line_id: line.id,
+        requested_by: requester.id,
+        amount,
+        description: randPick(BUDGET_EXPENSE_DESCRIPTIONS),
+        spent_on: toDate(-randInt(0, 45)),
+        status,
+      }
+      if (status !== 'pending') {
+        row.reviewed_by = budgetAdmin
+        row.reviewed_at = new Date().toISOString()
+        if (status === 'rejected') row.reject_reason = '올해 예산을 초과해 반려합니다'
+      }
+      budgetExpenseRows.push(row)
+    }
+  }
+
+  const { data: budgetExpenses, error: budgetExpensesError } = await db
+    .from('budget_expenses')
+    .insert(budgetExpenseRows as never)
+    .select('id, requested_by, amount, description, status')
+  if (budgetExpensesError) throw budgetExpensesError
+  log(`  예산 항목 ${budgetLineRows.length}개 · 지출 ${budgetExpenseRows.length}건`)
+
+  // --- 알림 샘플 --------------------------------------------------------------
+  // 지출 승인·반려 결과를 신청한 사람에게 알림으로 보낸다 — 실제 앱이
+  // reviewExpense()에서 하는 것과 같은 모양이다. 체험하기로 teacher@ 등을
+  // 뽑아 들어갔을 때 종 모양 알림 아이콘이 비어 있지 않게 하려는 목적.
+  const notificationRows = (budgetExpenses ?? [])
+    .filter((expense) => expense.status !== 'pending')
+    .map((expense) => {
+      const daysAgo = randInt(0, 10)
+      const createdAt = addDays(today, -daysAgo).toISOString()
+      return {
+        school_id: schoolId,
+        profile_id: expense.requested_by!,
+        title: expense.status === 'approved' ? '지출 신청이 승인되었습니다' : '지출 신청이 반려되었습니다',
+        body: `${formatWon(expense.amount)} · ${expense.description}`,
+        link: '/budget',
+        read_at: Math.random() < 0.5 ? createdAt : null,
+        created_at: createdAt,
+      }
+    })
+  if (notificationRows.length > 0) {
+    const { error: notificationError } = await db.from('notifications').insert(notificationRows)
+    if (notificationError) throw notificationError
+  }
+  log(`  알림 ${notificationRows.length}건`)
+
   // --- 결보강 가중치 기본값 ------------------------------------------------
   await db.from('substitution_rules').insert({ school_id: schoolId })
 
@@ -704,6 +804,8 @@ export async function seedDemoSchool(
     students: studentRows.length,
     safetyProtocols: safetyRows.length,
     iepGoals: iepGoalRows.length,
+    budgetExpenses: budgetExpenseRows.length,
+    notifications: notificationRows.length,
     accounts: DEMO_ACCOUNTS.map((account) => ({
       email: account.email,
       password: DEMO_PASSWORD,
