@@ -55,6 +55,8 @@ export interface SeedSummary {
   iepGoals: number
   budgetExpenses: number
   supportNeeds: number
+  equipmentLoans: number
+  fieldTrips: number
   notifications: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
@@ -933,6 +935,121 @@ export async function seedDemoSchool(
     log(`  보조인력 배치 표본 ${needRows.length}건 (일부러 공백 1·중복 1 포함)`)
   }
 
+  // --- 교구 대여 샘플 -----------------------------------------------------------
+  // 태블릿은 총 5대인데 오늘 겹치는 대여 두 건(3대+2대)으로 정확히 소진시켜
+  // "오늘 남음 0대"를 보여준다. 보행기는 진행 중인 대여 하나와 이미 반납된
+  // 대여 하나를 함께 넣어 "대여 중"/"반납됨" 상태를 둘 다 보여준다. 스위치
+  // 인터페이스는 대여가 아예 없어 정상(여유 있음) 상태를 보여준다.
+  const { data: equipmentItems, error: equipmentItemsError } = await db
+    .from('equipment_items')
+    .insert([
+      { school_id: schoolId, name: '태블릿', category: '보조공학기기', total_quantity: 5 },
+      { school_id: schoolId, name: '보행기', category: '이동보조기기', total_quantity: 2 },
+      { school_id: schoolId, name: '스위치 인터페이스', category: '의사소통기기', total_quantity: 3 },
+    ])
+    .select('id, name')
+  if (equipmentItemsError) throw equipmentItemsError
+  const equipmentByName = new Map((equipmentItems ?? []).map((e) => [e.name, e.id]))
+
+  const loanBorrower1 = teachers[0] ?? staffIds[0]!
+  const loanBorrower2 = teachers[1] ?? staffIds[0]!
+
+  const { error: equipmentLoansError } = await db.from('equipment_loans').insert([
+    {
+      school_id: schoolId,
+      item_id: equipmentByName.get('태블릿'),
+      quantity: 3,
+      borrower_id: loanBorrower1.id,
+      starts_on: toDate(0),
+      ends_on: toDate(4),
+      purpose: '수업 자료 찾기 실습',
+    },
+    {
+      school_id: schoolId,
+      item_id: equipmentByName.get('태블릿'),
+      quantity: 2,
+      borrower_id: loanBorrower2.id,
+      starts_on: toDate(0),
+      ends_on: toDate(2),
+      purpose: 'AAC 의사소통 연습',
+    },
+    {
+      school_id: schoolId,
+      item_id: equipmentByName.get('보행기'),
+      quantity: 1,
+      borrower_id: loanBorrower1.id,
+      starts_on: toDate(0),
+      ends_on: toDate(2),
+      purpose: '체육 시간 이동',
+    },
+    {
+      school_id: schoolId,
+      item_id: equipmentByName.get('보행기'),
+      quantity: 1,
+      borrower_id: loanBorrower2.id,
+      starts_on: toDate(-10),
+      ends_on: toDate(-5),
+      returned_at: addDays(today, -5).toISOString(),
+    },
+  ])
+  if (equipmentLoansError) throw equipmentLoansError
+  log(`  교구 ${equipmentItems?.length ?? 0}종 · 대여 4건 (일부러 태블릿 재고 소진 포함)`)
+
+  // --- 현장체험학습 샘플 --------------------------------------------------------
+  // 초등부 체험학습은 인솔자 2명 + 체크리스트 일부 완료로 정상 상태를 보여주고,
+  // 중1-1 체험학습은 일부러 인솔자를 배정하지 않아 "인솔자 미배정" 경고를
+  // 보여준다 — 보조인력 배치 표본과 같은 방식(일부러 공백 하나 남기기).
+  const tripCreator = teachers[0] ?? staffIds[0]!
+  const { data: fieldTrips, error: fieldTripsError } = await db
+    .from('field_trips')
+    .insert([
+      {
+        school_id: schoolId,
+        title: '초등부 가을 현장체험학습',
+        destination: '서울대공원',
+        starts_on: toDate(14),
+        ends_on: toDate(14),
+        scope: 'course' as const,
+        scope_course: 'elementary' as CourseLevel,
+        contact_note: '인솔 담임을 통해 학부모에게 연락',
+        created_by: tripCreator.id,
+      },
+      {
+        school_id: schoolId,
+        title: '중1-1 진로체험',
+        destination: '지역 직업체험관',
+        starts_on: toDate(21),
+        ends_on: toDate(21),
+        scope: 'class' as const,
+        scope_class_id: classByName.get('중1-1')?.id ?? null,
+        contact_note: '인솔 담임을 통해 학부모에게 연락',
+        created_by: tripCreator.id,
+      },
+    ])
+    .select('id, title')
+  if (fieldTripsError) throw fieldTripsError
+  const tripByTitle = new Map((fieldTrips ?? []).map((t) => [t.title, t.id]))
+  const elementaryTripId = tripByTitle.get('초등부 가을 현장체험학습')
+
+  if (elementaryTripId) {
+    const { error: checklistError } = await db.from('field_trip_checklist_items').insert([
+      { school_id: schoolId, trip_id: elementaryTripId, label: '비상연락망 확인', is_checked: true },
+      { school_id: schoolId, trip_id: elementaryTripId, label: '보험 가입 확인', is_checked: false },
+      { school_id: schoolId, trip_id: elementaryTripId, label: '학부모 동의서 수합', is_checked: false },
+    ])
+    if (checklistError) throw checklistError
+
+    const chaperones = teachers.slice(0, 2)
+    if (chaperones.length > 0) {
+      const { error: chaperoneError } = await db.from('field_trip_chaperones').insert(
+        chaperones.map((c) => ({ school_id: schoolId, trip_id: elementaryTripId, profile_id: c.id })),
+      )
+      if (chaperoneError) throw chaperoneError
+    }
+  }
+  // 중1-1 체험학습은 일부러 체크리스트·인솔자를 넣지 않는다 — 공백 표본.
+  log(`  현장체험학습 ${fieldTrips?.length ?? 0}건 (일부러 인솔자 미배정 1건 포함)`)
+
   // --- 알림 샘플 --------------------------------------------------------------
   // 지출 등록 결과를 신청한 사람에게 알림으로 보낸다. 체험하기로 teacher@ 등을
   // 뽑아 들어갔을 때 종 모양 알림 아이콘이 비어 있지 않게 하려는 목적.
@@ -979,6 +1096,8 @@ export async function seedDemoSchool(
     iepGoals: iepGoalRows.length,
     budgetExpenses: budgetExpenseRows.length,
     supportNeeds: supportNeedCount,
+    equipmentLoans: 4,
+    fieldTrips: fieldTrips?.length ?? 0,
     notifications: notificationRows.length,
     accounts: DEMO_ACCOUNTS.map((account) => ({
       email: account.email,

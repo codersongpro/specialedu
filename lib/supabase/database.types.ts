@@ -472,6 +472,64 @@ export type SupportAssignmentRow = {
   updated_at: string
 }
 
+export type EquipmentItemRow = {
+  id: string
+  school_id: string
+  name: string
+  category: string
+  total_quantity: number
+  note: string | null
+  is_active: boolean
+}
+
+export type EquipmentLoanRow = {
+  id: string
+  school_id: string
+  item_id: string
+  quantity: number
+  borrower_id: string
+  class_id: string | null
+  starts_on: string
+  ends_on: string
+  purpose: string | null
+  returned_at: string | null
+  created_at: string
+}
+
+export type FieldTripRow = {
+  id: string
+  school_id: string
+  title: string
+  destination: string | null
+  starts_on: string
+  ends_on: string
+  scope: EventScope
+  scope_course: CourseLevel | null
+  scope_grade: number | null
+  scope_class_id: string | null
+  scope_department_id: string | null
+  contact_note: string | null
+  created_by: string | null
+}
+
+export type FieldTripChecklistItemRow = {
+  id: string
+  school_id: string
+  trip_id: string
+  label: string
+  is_checked: boolean
+  checked_by: string | null
+  checked_at: string | null
+}
+
+export type FieldTripChaperoneRow = {
+  id: string
+  school_id: string
+  trip_id: string
+  profile_id: string
+  note: string | null
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -532,6 +590,11 @@ export type Database = {
       support_needs: Table<SupportNeedRow>
       support_availability: Table<SupportAvailabilityRow>
       support_assignments: Table<SupportAssignmentRow>
+      equipment_items: Table<EquipmentItemRow>
+      equipment_loans: Table<EquipmentLoanRow>
+      field_trips: Table<FieldTripRow>
+      field_trip_checklist_items: Table<FieldTripChecklistItemRow>
+      field_trip_chaperones: Table<FieldTripChaperoneRow>
     }
     Views: Empty
     Functions: Empty

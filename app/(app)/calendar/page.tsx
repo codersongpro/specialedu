@@ -27,29 +27,41 @@ export default async function CalendarPage({
         ]
 
   const supabase = await createClient()
-  const [{ data: events }, { data: classes }, { data: reservations }, { data: rooms }, { data: staff }] =
-    await Promise.all([
-      supabase
-        .from('academic_events')
-        .select('*')
-        .lte('starts_on', to)
-        .gte('ends_on', from)
-        .order('starts_on'),
-      supabase
-        .from('classes')
-        .select('id, name, course, grade')
-        .eq('school_id', session.school.id)
-        .order('grade'),
-      supabase
-        .from('room_reservations')
-        .select('id, room_id, reserved_date, course, class_id, requester_id, status, purpose')
-        .eq('school_id', session.school.id)
-        .gte('reserved_date', from)
-        .lte('reserved_date', to)
-        .not('status', 'in', '(cancelled,rejected)'),
-      supabase.from('rooms').select('id, name').eq('school_id', session.school.id),
-      supabase.from('profiles').select('id, name').eq('school_id', session.school.id),
-    ])
+  const [
+    { data: events },
+    { data: classes },
+    { data: reservations },
+    { data: rooms },
+    { data: staff },
+    { data: trips },
+  ] = await Promise.all([
+    supabase
+      .from('academic_events')
+      .select('*')
+      .lte('starts_on', to)
+      .gte('ends_on', from)
+      .order('starts_on'),
+    supabase
+      .from('classes')
+      .select('id, name, course, grade')
+      .eq('school_id', session.school.id)
+      .order('grade'),
+    supabase
+      .from('room_reservations')
+      .select('id, room_id, reserved_date, course, class_id, requester_id, status, purpose')
+      .eq('school_id', session.school.id)
+      .gte('reserved_date', from)
+      .lte('reserved_date', to)
+      .not('status', 'in', '(cancelled,rejected)'),
+    supabase.from('rooms').select('id, name').eq('school_id', session.school.id),
+    supabase.from('profiles').select('id, name').eq('school_id', session.school.id),
+    supabase
+      .from('field_trips')
+      .select('id, title, destination, starts_on, ends_on, scope, scope_course, scope_grade, scope_class_id')
+      .eq('school_id', session.school.id)
+      .lte('starts_on', to)
+      .gte('ends_on', from),
+  ])
 
   const roomName = new Map((rooms ?? []).map((r) => [r.id, r.name]))
   const staffName = new Map((staff ?? []).map((s) => [s.id, s.name]))
@@ -72,9 +84,27 @@ export default async function CalendarPage({
     }
   })
 
+  const tripItems = (trips ?? []).map((t) => ({
+    id: `trip:${t.id}`,
+    title: t.title,
+    detail: t.destination,
+    startsOn: t.starts_on,
+    endsOn: t.ends_on,
+    scope: t.scope,
+    scopeCourse: t.scope_course,
+    scopeGrade: t.scope_grade,
+    scopeClassId: t.scope_class_id,
+    category: 'field_trip',
+    source: 'field_trip',
+    kind: 'trip' as const,
+  }))
+
   return (
     <>
-      <RealtimeRefresh schoolId={session.school.id} tables={['academic_events', 'room_reservations']} />
+      <RealtimeRefresh
+        schoolId={session.school.id}
+        tables={['academic_events', 'room_reservations', 'field_trips']}
+      />
       <PageHeader
         title="학사일정·행사"
         description="학교 전체, 과정, 학년, 학급 일정과 특별실 예약을 한 화면에서 봅니다."
@@ -102,6 +132,7 @@ export default async function CalendarPage({
             source: e.source,
           })),
           ...reservationItems,
+          ...tripItems,
         ]}
         classNames={Object.fromEntries((classes ?? []).map((c) => [c.id, c.name]))}
         classCourses={Object.fromEntries((classes ?? []).map((c) => [c.id, c.course]))}

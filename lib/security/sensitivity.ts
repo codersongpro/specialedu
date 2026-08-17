@@ -37,7 +37,7 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/rooms', label: '특별실 예약' },
       { href: '/timetable', label: '시간표 보기' },
-      { href: '/equipment', label: '교구 대여', planned: true },
+      { href: '/equipment', label: '교구 대여' },
     ],
   },
   {
@@ -56,7 +56,7 @@ export const NAV: NavCategory[] = [
     sensitivity: 'normal',
     items: [
       { href: '/calendar', label: '학사일정·행사' },
-      { href: '/calendar/trips', label: '현장체험학습', planned: true },
+      { href: '/calendar/trips', label: '현장체험학습' },
     ],
   },
   {

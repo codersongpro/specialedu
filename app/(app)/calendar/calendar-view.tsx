@@ -29,8 +29,8 @@ export interface CalendarEvent {
   scopeClassId: string | null
   category: string
   source: string
-  /** 특별실 예약을 캘린더에 함께 보여줄 때만 쓴다. 학사일정은 항상 'event'. */
-  kind?: 'event' | 'reservation'
+  /** 특별실 예약·현장체험학습을 캘린더에 함께 보여줄 때만 쓴다. 학사일정은 항상 'event'. */
+  kind?: 'event' | 'reservation' | 'trip'
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -44,6 +44,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   training: '연수·협의회',
   other: '기타',
   room_reservation: '특별실 예약',
+  field_trip: '현장체험학습',
 }
 
 const SCOPE_LABEL: Record<string, string> = {
@@ -331,7 +332,7 @@ function EventChip({
         <span className="text-sm">{event.title}</span>
       </button>
       {event.detail ? <span className="text-xs text-ink-soft">{event.detail}</span> : null}
-      {event.kind !== 'reservation' && event.source !== 'manual' ? (
+      {!event.kind && event.source !== 'manual' ? (
         <span className="text-[10px] text-ink-soft">나이스</span>
       ) : null}
       {showDelete && event.source === 'manual' ? (
@@ -394,6 +395,14 @@ function EventDetailModal({
         {event.kind === 'reservation' ? (
           <p className="mt-2 text-[13px] text-ink-soft">
             특별실 예약입니다. 취소하려면 특별실 예약 화면에서 하세요.
+          </p>
+        ) : event.kind === 'trip' ? (
+          <p className="mt-2 text-[13px] text-ink-soft">
+            현장체험학습입니다.{' '}
+            <a href="/calendar/trips" className="underline hover:text-brand">
+              체크리스트·인솔 배치는 여기서
+            </a>
+            .
           </p>
         ) : event.source !== 'manual' ? (
           <p className="mt-2 text-[13px] text-ink-soft">나이스 학사일정에서 가져온 일정입니다.</p>
