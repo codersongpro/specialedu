@@ -77,6 +77,7 @@ export async function acceptInvite(
     name: invitation.name,
     role: invitation.role,
     employment: invitation.employment,
+    position: invitation.position,
     department_id: invitation.department_id,
   })
 

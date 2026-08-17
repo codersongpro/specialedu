@@ -19,6 +19,22 @@ const EMPLOYMENTS = [
   { value: 'assistant', label: '실무사·보조' },
 ] as const
 
+/** 화면 표시용 직급 후보 — 학교마다 직제 명칭이 달라 목록에 없으면 직접 입력한다 */
+const POSITIONS = [
+  '교장',
+  '교감',
+  '수석교사',
+  '교사',
+  '보건교사',
+  '영양교사',
+  '사서교사',
+  '전문상담교사',
+  '행정실장',
+  '주무관',
+  '실무사',
+  '사회복무요원',
+]
+
 export function InviteForm() {
   const [state, formAction, pending] = useActionState<InviteState, FormData>(
     createInvitation,
@@ -61,6 +77,22 @@ export function InviteForm() {
           </select>
         </Field>
       </div>
+
+      <Field label="직급 (선택)" htmlFor="position" hint="목록에 없으면 직접 입력하세요">
+        <input
+          id="position"
+          name="position"
+          list="position-options"
+          maxLength={30}
+          className={inputClass}
+          placeholder="예: 교감"
+        />
+        <datalist id="position-options">
+          {POSITIONS.map((p) => (
+            <option key={p} value={p} />
+          ))}
+        </datalist>
+      </Field>
 
       {state.error ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">

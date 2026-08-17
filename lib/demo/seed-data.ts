@@ -19,6 +19,7 @@ export const DEMO_ACCOUNTS = [
     name: '정한결',
     role: 'admin' as const,
     employment: 'full_time' as const,
+    position: '교감',
     note: '관리자(교감)',
   },
   {
@@ -26,6 +27,7 @@ export const DEMO_ACCOUNTS = [
     name: '오나린',
     role: 'manager' as const,
     employment: 'full_time' as const,
+    position: '교무부장',
     note: '교무부장',
   },
   {
@@ -33,6 +35,7 @@ export const DEMO_ACCOUNTS = [
     name: '김하늘',
     role: 'teacher' as const,
     employment: 'full_time' as const,
+    position: '교사',
     note: '고등 3-1 담임',
   },
   {
@@ -40,6 +43,7 @@ export const DEMO_ACCOUNTS = [
     name: '최나래',
     role: 'part_time' as const,
     employment: 'part_time' as const,
+    position: '시간강사',
     note: '시간강사 (화·목 출근)',
   },
 ]

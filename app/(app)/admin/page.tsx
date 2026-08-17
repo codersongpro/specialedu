@@ -34,7 +34,7 @@ export default async function AdminPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('profiles')
-        .select('id, name, role, employment, is_active')
+        .select('id, name, role, employment, position, is_active')
         .eq('school_id', session.school.id)
         .order('name'),
       supabase
@@ -113,6 +113,11 @@ export default async function AdminPage() {
                       {invitation.email}
                     </span>
                     <Badge>{ROLE_LABEL[invitation.role]}</Badge>
+                    {invitation.position ? (
+                      <span className="whitespace-nowrap text-xs text-ink-soft">
+                        {invitation.position}
+                      </span>
+                    ) : null}
                     <span className="ml-auto whitespace-nowrap text-[11px] text-ink-soft tabular">
                       {invitation.expires_at.slice(0, 10)}까지
                     </span>
@@ -203,6 +208,9 @@ export default async function AdminPage() {
             {(members ?? []).map((member) => (
               <li key={member.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                 <span className="font-medium">{member.name}</span>
+                {member.position ? (
+                  <span className="whitespace-nowrap text-xs text-ink-soft">{member.position}</span>
+                ) : null}
                 <Badge>{ROLE_LABEL[member.role]}</Badge>
                 {member.employment === 'part_time' ? <Badge tone="brand">시간강사</Badge> : null}
                 {!member.is_active ? <Badge tone="danger">사용 중지</Badge> : null}

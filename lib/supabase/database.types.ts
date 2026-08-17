@@ -48,6 +48,7 @@ export type ProfileRow = {
   name: string
   role: UserRole
   employment: EmploymentType
+  position: string | null
   department_id: string | null
   work_days: number[]
   gemini_key_enc: string | null
@@ -272,6 +273,7 @@ export type InvitationRow = {
   name: string
   role: UserRole
   employment: EmploymentType
+  position: string | null
   department_id: string | null
   token_hash: string
   expires_at: string

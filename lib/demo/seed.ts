@@ -203,6 +203,7 @@ export async function seedDemoSchool(
       name: account.name,
       role: account.role,
       employment: account.employment,
+      position: account.position,
       department_id: deptByName.get('교무부') ?? null,
       work_days: workDays,
     })

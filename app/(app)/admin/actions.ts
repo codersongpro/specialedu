@@ -14,6 +14,7 @@ const InviteInput = z.object({
   name: z.string().min(1, '이름을 적어 주세요').max(40),
   role: z.enum(['admin', 'manager', 'teacher', 'part_time', 'staff']),
   employment: z.enum(['full_time', 'fixed_term', 'part_time', 'assistant']),
+  position: z.string().max(30).optional(),
 })
 
 export interface InviteState {
@@ -34,6 +35,7 @@ export async function createInvitation(
     name: formData.get('name'),
     role: formData.get('role'),
     employment: formData.get('employment'),
+    position: formData.get('position') || undefined,
   })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? '입력을 확인하세요' }
@@ -48,6 +50,7 @@ export async function createInvitation(
     name: parsed.data.name,
     role: parsed.data.role,
     employment: parsed.data.employment,
+    position: parsed.data.position ?? null,
     token_hash: hash,
     expires_at: inviteExpiryFrom().toISOString(),
     invited_by: session.userId,
