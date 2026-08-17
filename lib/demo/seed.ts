@@ -54,6 +54,7 @@ export interface SeedSummary {
   safetyProtocols: number
   iepGoals: number
   budgetExpenses: number
+  supportNeeds: number
   notifications: number
   accounts: Array<{ email: string; password: string; note: string }>
 }
@@ -834,6 +835,104 @@ export async function seedDemoSchool(
   if (budgetExpensesError) throw budgetExpensesError
   log(`  예산 항목 ${budgetLineRows.length}개 · 지출 ${budgetExpenseRows.length}건`)
 
+  // --- 보조인력 배치 샘플 -----------------------------------------------------
+  // 실무사(구소라·민아름·천보름)의 근무 시간과 학급 지원 필요 시간을 채운다.
+  // 체험하기로 들어온 사람이 "보조인력 배치" 화면이 뭘 하는 화면인지 바로
+  // 알 수 있도록, 일부러 공백 1건·중복 1건이 눈에 보이게 배치한다 — 나머지는
+  // 전부 정상으로 채워 "이렇게 맞춰 두면 된다"는 것도 함께 보여준다.
+  const assistants = staffIds.filter((s) => s.role === 'staff')
+  const [gusora, minareum, cheonboreum] = assistants
+  let supportNeedCount = 0
+
+  if (gusora && minareum && cheonboreum) {
+    const { error: availabilityError } = await db.from('support_availability').insert([
+      // 구소라 — 평일 오전
+      ...[1, 2, 3, 4, 5].map((day) => ({
+        school_id: schoolId,
+        profile_id: gusora.id,
+        day_of_week: day,
+        starts_min: toMinutes('09:00'),
+        ends_min: toMinutes('13:00'),
+      })),
+      // 민아름 — 평일 오후
+      ...[1, 2, 3, 4, 5].map((day) => ({
+        school_id: schoolId,
+        profile_id: minareum.id,
+        day_of_week: day,
+        starts_min: toMinutes('13:00'),
+        ends_min: toMinutes('17:00'),
+      })),
+      // 천보름 — 화·목만 종일
+      ...[2, 4].map((day) => ({
+        school_id: schoolId,
+        profile_id: cheonboreum.id,
+        day_of_week: day,
+        starts_min: toMinutes('09:00'),
+        ends_min: toMinutes('15:00'),
+      })),
+    ])
+    if (availabilityError) throw availabilityError
+
+    // starts_min/ends_min은 support_needs_fill_minutes 트리거가 채운다
+    // (timetable_slots와 같은 방식) — 여기서는 안 넣는다.
+    const needPlan: Array<{
+      className: string
+      course: CourseLevel
+      day: number
+      periodNo: number
+      assignTo: (typeof staffIds)[number] | null
+    }> = [
+      { className: '초1-1', course: 'elementary', day: 1, periodNo: 3, assignTo: gusora },
+      { className: '초2-1', course: 'elementary', day: 1, periodNo: 4, assignTo: gusora },
+      { className: '초3-1', course: 'elementary', day: 1, periodNo: 6, assignTo: minareum },
+      // 일부러 아무도 안 맡긴다 — "공백" 경고 표본
+      { className: '초4-1', course: 'elementary', day: 3, periodNo: 3, assignTo: null },
+      // 일부러 겹치게 만든다 — 초등 3교시(10:40~11:20)와 중학 3교시(10:50~11:35)는
+      // 교시 번호도 다르고 학급도 다르지만 실제 시각이 겹친다. 이 앱 전체의
+      // 핵심 원칙(교시 번호가 아니라 분 단위로 비교)이 이 화면에도 그대로
+      // 적용된다는 걸 데모에서 보여준다.
+      { className: '초5-1', course: 'elementary', day: 2, periodNo: 3, assignTo: cheonboreum },
+      { className: '중1-1', course: 'middle', day: 2, periodNo: 3, assignTo: cheonboreum },
+    ]
+
+    const needRows = needPlan
+      .filter((p) => classByName.has(p.className))
+      .map((p) => ({
+        school_id: schoolId,
+        term_id: termId,
+        class_id: classByName.get(p.className)!.id,
+        course: p.course,
+        day_of_week: p.day,
+        period_no: p.periodNo,
+      }))
+
+    const { data: insertedNeeds, error: needsError } = await db
+      .from('support_needs')
+      .insert(needRows as never)
+      .select('id, class_id, day_of_week, period_no')
+    if (needsError) throw needsError
+
+    const assignmentRows = (insertedNeeds ?? [])
+      .map((row) => {
+        const plan = needPlan.find(
+          (p) =>
+            classByName.get(p.className)?.id === row.class_id &&
+            p.day === row.day_of_week &&
+            p.periodNo === row.period_no,
+        )
+        return plan?.assignTo ? { school_id: schoolId, need_id: row.id, profile_id: plan.assignTo.id } : null
+      })
+      .filter((row): row is { school_id: string; need_id: string; profile_id: string } => row !== null)
+
+    if (assignmentRows.length > 0) {
+      const { error: assignError } = await db.from('support_assignments').insert(assignmentRows)
+      if (assignError) throw assignError
+    }
+
+    supportNeedCount = needRows.length
+    log(`  보조인력 배치 표본 ${needRows.length}건 (일부러 공백 1·중복 1 포함)`)
+  }
+
   // --- 알림 샘플 --------------------------------------------------------------
   // 지출 등록 결과를 신청한 사람에게 알림으로 보낸다. 체험하기로 teacher@ 등을
   // 뽑아 들어갔을 때 종 모양 알림 아이콘이 비어 있지 않게 하려는 목적.
@@ -879,6 +978,7 @@ export async function seedDemoSchool(
     safetyProtocols: safetyRows.length,
     iepGoals: iepGoalRows.length,
     budgetExpenses: budgetExpenseRows.length,
+    supportNeeds: supportNeedCount,
     notifications: notificationRows.length,
     accounts: DEMO_ACCOUNTS.map((account) => ({
       email: account.email,

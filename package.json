@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
+    "db:schema": "tsx scripts/build-schema.ts",
     "db:reset": "supabase db reset",
     "seed:demo": "tsx scripts/seed.ts",
     "school:new": "tsx scripts/new-school.ts"

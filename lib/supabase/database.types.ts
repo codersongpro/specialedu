@@ -435,6 +435,43 @@ export type NotificationRow = {
   created_at: string
 }
 
+export type SupportNeedRow = {
+  id: string
+  school_id: string
+  term_id: string
+  class_id: string
+  course: CourseLevel
+  day_of_week: number
+  period_no: number
+  starts_min: number
+  ends_min: number
+  note: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SupportAvailabilityRow = {
+  id: string
+  school_id: string
+  profile_id: string
+  day_of_week: number
+  starts_min: number
+  ends_min: number
+  created_at: string
+  updated_at: string
+}
+
+export type SupportAssignmentRow = {
+  id: string
+  school_id: string
+  need_id: string
+  profile_id: string
+  assigned_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -492,6 +529,9 @@ export type Database = {
       safety_protocols: Table<SafetyProtocolRow>
       iep_goals: Table<IepGoalRow>
       iep_progress: Table<IepProgressRow>
+      support_needs: Table<SupportNeedRow>
+      support_availability: Table<SupportAvailabilityRow>
+      support_assignments: Table<SupportAssignmentRow>
     }
     Views: Empty
     Functions: Empty

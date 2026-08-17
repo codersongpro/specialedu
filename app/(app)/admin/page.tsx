@@ -152,15 +152,8 @@ export default async function AdminPage() {
             바로 쓸 수 있습니다. 무료 키는 하루 사용량이 정해져 있어, 사람이 몰리면 개인
             키를 등록하도록 안내됩니다. 개인 설정에 등록한 키가 있으면 그 키를 우선 씁니다.
           </p>
-          {session.school.gemini_key_hint ? (
-            <p className="mt-3">
-              <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
-                {session.school.gemini_key_hint}
-              </code>
-            </p>
-          ) : null}
           <div className="mt-4 max-w-sm">
-            <SchoolKeyForm hasKey={Boolean(session.school.gemini_key_hint)} />
+            <SchoolKeyForm hint={session.school.gemini_key_hint} />
           </div>
         </Card>
 
@@ -171,15 +164,8 @@ export default async function AdminPage() {
             있습니다. 이 키는 학교별로 따로 저장돼 다른 학교와 공유되지 않습니다. 개인 설정에
             등록한 키가 있으면 그 키를 우선 씁니다.
           </p>
-          {session.school.youtube_key_hint ? (
-            <p className="mt-3">
-              <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
-                {session.school.youtube_key_hint}
-              </code>
-            </p>
-          ) : null}
           <div className="mt-4 max-w-sm">
-            <SchoolYoutubeKeyForm hasKey={Boolean(session.school.youtube_key_hint)} />
+            <SchoolYoutubeKeyForm hint={session.school.youtube_key_hint} />
           </div>
         </Card>
 

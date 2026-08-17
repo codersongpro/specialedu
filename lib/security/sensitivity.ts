@@ -47,7 +47,7 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/substitutions', label: '결보강' },
       { href: '/substitutions/payroll', label: '강사료 정산', adminOnly: true },
-      { href: '/staffing/assistants', label: '보조인력 배치', planned: true },
+      { href: '/staffing/assistants', label: '보조인력 배치' },
     ],
   },
   {

@@ -1,5 +1,5 @@
 import { headers } from 'next/headers'
-import { Button, Card, PageHeader } from '@/components/ui'
+import { Badge, Button, Card, PageHeader } from '@/components/ui'
 import { requireSession } from '@/lib/supabase/server'
 import { removePersonalKey, removePersonalYoutubeKey, rotateCalendarToken } from './actions'
 import { KeyForm } from './key-form'
@@ -68,6 +68,8 @@ export default async function SettingsPage() {
             Google AI Studio에서 무료로 발급받을 수 있습니다.
           </p>
 
+          <SchoolKeyStatus hint={session.school.gemini_key_hint} label="학교 공용 Gemini 키" />
+
           {session.profile.gemini_key_hint ? (
             <div className="mt-4 flex items-center gap-3">
               <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
@@ -100,6 +102,8 @@ export default async function SettingsPage() {
             있습니다.
           </p>
 
+          <SchoolKeyStatus hint={session.school.youtube_key_hint} label="학교 공용 유튜브 키" />
+
           {session.profile.youtube_key_hint ? (
             <div className="mt-4 flex items-center gap-3">
               <code className="rounded-lg bg-canvas px-3 py-1.5 text-sm">
@@ -119,5 +123,29 @@ export default async function SettingsPage() {
         </Card>
       </div>
     </>
+  )
+}
+
+/**
+ * 학교 공용 키가 등록돼 있는지 모든 교직원이 볼 수 있게 한다.
+ *
+ * 예전엔 개인 키 힌트만 보여줘서, 학교 공용 키가 등록됐는지는 수업
+ * 도구함에서 "등록된 키가 없습니다" 오류를 받아 봐야 알 수 있었다.
+ * 값이 아니라 뒷 4자리 힌트만 보여주므로 노출 범위가 넓어지지 않는다
+ * (schools_select RLS가 이미 같은 학교로 좁혀 준 값이다).
+ */
+function SchoolKeyStatus({ hint, label }: { hint: string | null; label: string }) {
+  return (
+    <div className="mt-3 flex items-center gap-2 text-sm">
+      <span className="text-ink-soft">{label}</span>
+      {hint ? (
+        <>
+          <Badge tone="ok">등록됨</Badge>
+          <code className="text-xs text-ink-soft">{hint}</code>
+        </>
+      ) : (
+        <Badge tone="warn">아직 등록되지 않았습니다 — 관리자에게 요청하세요</Badge>
+      )}
+    </div>
   )
 }
