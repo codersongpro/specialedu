@@ -177,3 +177,92 @@ ${input.subject ? `교과: ${input.subject}` : ''}
   if (queries.length === 0) throw new Error('검색어를 만들지 못했습니다')
   return queries.slice(0, 5)
 }
+
+export interface MeetingNoteSummaryInput {
+  title: string
+  category: string | null
+  /** 이미 마스킹된 회의 원문 — [[P1]] 같은 토큰이 그대로 남아 있어야 한다 */
+  rawText: string
+}
+
+/** 협의록 요약 — 결정사항·담당자·기한 위주로 짧게 정리한다. */
+export async function summarizeMeetingNotes(apiKey: string, input: MeetingNoteSummaryInput): Promise<string> {
+  const prompt = `다음은 학교 협의회·회의 기록입니다. 결정사항·담당자·기한을 중심으로
+5줄 이내로 요약하세요. 문장에 [[P1]], [[P2]] 같은 대괄호 토큰이 보이면 절대
+지우거나 바꾸지 말고 그 형태 그대로 남겨 두세요.
+
+제목: ${input.title}
+${input.category ? `구분: ${input.category}` : ''}
+내용: ${input.rawText}
+
+다음 JSON 형식으로만 답하세요:
+{"summary": "결정사항·담당자·기한 위주 요약, 5줄 이내"}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const summary = typeof record.summary === 'string' ? record.summary : ''
+  if (!summary) throw new Error('Gemini 응답을 읽을 수 없습니다')
+  return summary
+}
+
+export interface IepGoalDraftInput {
+  areaLabel: string
+  /** 이미 마스킹된 현재 수준 설명 — [[P1]] 같은 토큰이 그대로 남아 있어야 한다 */
+  currentLevel: string
+}
+
+/** IEP 목표 초안 — 관찰·측정 가능한 행동 목표 문장 후보 2~3개를 만든다. */
+export async function draftIepGoals(apiKey: string, input: IepGoalDraftInput): Promise<string[]> {
+  const prompt = `특수교육 IEP(개별화교육계획) 목표 문장 초안을 만듭니다. 영역과
+학생의 현재 수준을 보고, 관찰·측정 가능한 행동으로 서술된 목표 문장을
+2~3개 제안하세요. "~을 ~수준으로 수행한다"와 같은 형태로 씁니다. 문장에
+[[P1]], [[P2]] 같은 대괄호 토큰이 보이면 절대 지우거나 바꾸지 말고 그 형태
+그대로 남겨 두세요.
+
+영역: ${input.areaLabel}
+현재 수준: ${input.currentLevel}
+
+다음 JSON 형식으로만 답하세요:
+{"goals": ["목표 문장 후보1", "목표 문장 후보2"]}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const goals = Array.isArray(record.goals)
+    ? record.goals.filter((g): g is string => typeof g === 'string' && g.trim().length > 0)
+    : []
+  if (goals.length === 0) throw new Error('목표 문장을 만들지 못했습니다')
+  return goals.slice(0, 3)
+}
+
+export interface PbsTrendSummaryInput {
+  weeksCovered: number
+  totalCount: number
+  byWeekday: Array<{ label: string; count: number }>
+  byCategory: Array<{ label: string; count: number }>
+  byLocation: Array<{ label: string; count: number }>
+}
+
+/**
+ * PBS 8주 추세 요약 — 이미 집계된 건수(요일·분류·장소별)만 받는다. 학생
+ * 이름·원문 기록은 이 함수에 절대 넘기지 않는다(호출부 책임).
+ */
+export async function summarizePbsTrend(apiKey: string, input: PbsTrendSummaryInput): Promise<string> {
+  const prompt = `다음은 특수학교의 최근 ${input.weeksCovered}주간 행동지원(PBS) 기록
+건수를 요일·분류·장소별로 집계한 수치입니다. 개별 학생을 언급하지 말고,
+전체 경향과 눈에 띄는 패턴(예: 특정 요일·장소에 집중되는 경향)을 교사가
+참고할 수 있도록 3~4문장으로 요약하세요.
+
+전체 건수: ${input.totalCount}건
+요일별: ${input.byWeekday.map((w) => `${w.label} ${w.count}건`).join(', ')}
+분류별: ${input.byCategory.map((c) => `${c.label} ${c.count}건`).join(', ')}
+장소별: ${input.byLocation.map((l) => `${l.label} ${l.count}건`).join(', ')}
+
+다음 JSON 형식으로만 답하세요:
+{"summary": "전체 경향 요약, 3~4문장"}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const summary = typeof record.summary === 'string' ? record.summary : ''
+  if (!summary) throw new Error('Gemini 응답을 읽을 수 없습니다')
+  return summary
+}

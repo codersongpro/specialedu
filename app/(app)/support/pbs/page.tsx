@@ -2,6 +2,7 @@ import { format, subWeeks } from 'date-fns'
 import { RealtimeRefresh } from '@/components/realtime-refresh'
 import { Card, EmptyState, PageHeader } from '@/components/ui'
 import { formatKoreanDateWithDay, shiftDays, toDateString, weekStart } from '@/lib/date'
+import { aggregateTrendBreakdown } from '@/lib/pbs/trend'
 import { sortClassesByCourseGrade } from '@/lib/school/class-order'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
 import { decryptSecret } from '@/lib/security/crypto'
@@ -9,6 +10,7 @@ import { createClient, requireSession } from '@/lib/supabase/server'
 import { RecordList } from './record-list'
 import { RecordPanel } from './record-panel'
 import { TrendChart, type TrendWeek } from './trend-chart'
+import { TrendSummary } from './trend-summary'
 
 export default async function PbsPage() {
   const session = await requireSession()
@@ -87,6 +89,16 @@ export default async function PbsPage() {
     }
   })
 
+  // AI 요약으로 나가는 건 이 집계 결과뿐이다 — 학생 이름·ABC 원문은 안 감
+  const trendBreakdown = aggregateTrendBreakdown(
+    (records ?? []).map((r) => ({
+      occurredAt: r.occurred_at,
+      categoryName: r.category_id ? (categoryName.get(r.category_id) ?? '기타') : '기타',
+      location: r.location,
+    })),
+    8,
+  )
+
   return (
     <>
       <RealtimeRefresh schoolId={session.school.id} tables={['pbs_records']} />
@@ -120,6 +132,7 @@ export default async function PbsPage() {
           <div className="mt-3">
             <TrendChart weeks={weeks} />
           </div>
+          <TrendSummary breakdown={trendBreakdown} />
         </Card>
       </div>
 

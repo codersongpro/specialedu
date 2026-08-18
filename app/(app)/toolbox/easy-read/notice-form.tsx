@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Button, Field, inputClass } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { PII_KIND_LABEL } from '@/lib/security/pii'
-import { generateNotice, previewMask, type MaskPreviewResult, type NoticeResult } from './actions'
+import { generateNotice, previewMask, saveNotice, type MaskPreviewResult, type NoticeResult } from './actions'
 
 const NOTICE_TYPES = ['현장체험학습', '준비물', '행사', '일정변경', '급식', '기타']
 const COURSES = [
@@ -36,6 +36,8 @@ export function NoticeForm({ classes }: { classes: Array<{ id: string; name: str
   const [previewPending, startPreviewTransition] = useTransition()
   const [result, setResult] = useState<NoticeResult | null>(null)
   const [generatePending, startGenerateTransition] = useTransition()
+  const [savePending, startSaveTransition] = useTransition()
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
   const courseLabel = COURSES.find((c) => c.value === course)?.label ?? '전체'
   const audience =
@@ -56,6 +58,7 @@ export function NoticeForm({ classes }: { classes: Array<{ id: string; name: str
   }
 
   function submit() {
+    setSaveMsg(null)
     startGenerateTransition(async () => {
       const r = await generateNotice({
         noticeType,
@@ -71,6 +74,28 @@ export function NoticeForm({ classes }: { classes: Array<{ id: string; name: str
         detail,
       })
       setResult(r)
+    })
+  }
+
+  function save() {
+    if (!result?.text) return
+    setSaveMsg(null)
+    startSaveTransition(async () => {
+      const r = await saveNotice({
+        noticeType,
+        title,
+        date,
+        place,
+        items: itemsText
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        audience,
+        level,
+        detail,
+        output: result.text!,
+      })
+      setSaveMsg(r.error ?? '자료함에 저장했습니다')
     })
   }
 
@@ -250,13 +275,19 @@ export function NoticeForm({ classes }: { classes: Array<{ id: string; name: str
 
       <div>
         {result?.text ? (
-          <NoticePreview
-            title={title}
-            date={date}
-            place={place}
-            text={result.text}
-            pictograms={result.pictograms ?? []}
-          />
+          <>
+            <NoticePreview
+              title={title}
+              date={date}
+              place={place}
+              text={result.text}
+              pictograms={result.pictograms ?? []}
+            />
+            <Button variant="secondary" className="mt-2 w-full" onClick={save} disabled={savePending}>
+              {savePending ? '저장 중' : '자료함에 저장하기'}
+            </Button>
+            {saveMsg ? <p className="mt-1.5 text-center text-[13px] text-ink-soft">{saveMsg}</p> : null}
+          </>
         ) : (
           <div className="flex h-full min-h-[240px] items-center justify-center rounded-[14px] border border-dashed border-line text-[13.5px] text-ink-soft">
             왼쪽에서 내용을 채우고 만들면 여기에 결과가 보입니다

@@ -1,10 +1,11 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { matchPictograms, pictogramImageUrl } from '@/lib/ai/arasaac'
 import { generateEasyRead, type EasyReadLevel } from '@/lib/ai/gemini'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
-import { decryptSecret } from '@/lib/security/crypto'
+import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
 import { blockedFindings, maskFields, maskPII, restorePII, type Confidence, type PiiKind } from '@/lib/security/pii'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, requireSession } from '@/lib/supabase/server'
@@ -178,4 +179,88 @@ export async function generateNotice(input: z.input<typeof NoticeInput>): Promis
     })
     return { error: '생성하지 못했습니다. 잠시 후 다시 시도해 주세요.' }
   }
+}
+
+const SaveNoticeInput = z.object({
+  noticeType: z.string().min(1).max(20),
+  title: z.string().min(1, '제목을 적어 주세요').max(120),
+  date: z.string().optional(),
+  place: z.string().max(120).optional(),
+  items: z.array(z.string().max(40)).max(20),
+  audience: z.string().min(1).max(60),
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  detail: z.string().max(1000),
+  output: z.string().min(1).max(4000),
+})
+
+export interface SaveNoticeResult {
+  ok?: true
+  error?: string
+}
+
+/**
+ * 만든 안내문을 자료함에 저장한다. 원본 안내사항·생성 결과 둘 다 실제
+ * 개인정보가 남아 있을 수 있어(원본은 마스킹 전, 결과는 복원 후) 암호화해
+ * 저장한다.
+ */
+export async function saveNotice(input: z.input<typeof SaveNoticeInput>): Promise<SaveNoticeResult> {
+  const session = await requireSession()
+  const parsed = SaveNoticeInput.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? '입력을 확인하세요' }
+  const data = parsed.data
+
+  const supabase = await createClient()
+  const { data: inserted, error } = await supabase
+    .from('notices')
+    .insert({
+      school_id: session.school.id,
+      notice_type: data.noticeType,
+      title: data.title,
+      event_date: data.date || null,
+      place: data.place || null,
+      items: data.items,
+      audience: data.audience,
+      level: data.level,
+      detail_enc: encryptSecret(data.detail),
+      output_enc: encryptSecret(data.output),
+      created_by: session.userId,
+    })
+    .select('id')
+    .single()
+
+  if (error || !inserted) return { error: '저장하지 못했습니다' }
+
+  await writeAudit({
+    schoolId: session.school.id,
+    actorId: session.userId,
+    actorName: session.profile.name,
+    action: AUDIT_ACTIONS.noticeSave,
+    targetTable: 'notices',
+    targetId: inserted.id,
+  })
+
+  revalidatePath('/toolbox/easy-read')
+  return { ok: true }
+}
+
+/** 자료함에서 삭제 — 작성자 또는 관리자만(RLS가 최종 확인). */
+export async function deleteNotice(id: string): Promise<SaveNoticeResult> {
+  const session = await requireSession()
+  if (!z.string().uuid().safeParse(id).success) return { error: '잘못된 요청입니다' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('notices').delete().eq('id', id)
+  if (error) return { error: '지우지 못했습니다' }
+
+  await writeAudit({
+    schoolId: session.school.id,
+    actorId: session.userId,
+    actorName: session.profile.name,
+    action: AUDIT_ACTIONS.noticeDelete,
+    targetTable: 'notices',
+    targetId: id,
+  })
+
+  revalidatePath('/toolbox/easy-read')
+  return { ok: true }
 }

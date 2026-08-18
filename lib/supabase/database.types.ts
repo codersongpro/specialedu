@@ -532,6 +532,35 @@ export type FieldTripChaperoneRow = {
   note: string | null
 }
 
+export type NoticeRow = {
+  id: string
+  school_id: string
+  notice_type: string
+  title: string
+  event_date: string | null
+  place: string | null
+  items: string[]
+  audience: string
+  level: number
+  detail_enc: string
+  output_enc: string
+  created_by: string | null
+  created_at: string
+}
+
+export type MeetingNoteRow = {
+  id: string
+  school_id: string
+  title: string
+  meeting_date: string
+  category: string | null
+  raw_text_enc: string
+  summary_enc: string
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
   Insert: Insert
@@ -597,6 +626,8 @@ export type Database = {
       field_trips: Table<FieldTripRow>
       field_trip_checklist_items: Table<FieldTripChecklistItemRow>
       field_trip_chaperones: Table<FieldTripChaperoneRow>
+      notices: Table<NoticeRow>
+      meeting_notes: Table<MeetingNoteRow>
     }
     Views: Empty
     Functions: Empty

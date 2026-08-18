@@ -1051,6 +1051,58 @@ export async function seedDemoSchool(
   // 중1-1 체험학습은 일부러 체크리스트·인솔자를 넣지 않는다 — 공백 표본.
   log(`  현장체험학습 ${fieldTrips?.length ?? 0}건 (일부러 인솔자 미배정 1건 포함)`)
 
+  // --- 가정통신문 자료함 · 협의록 샘플 -------------------------------------------
+  // 실제 Gemini를 부르지 않는다 — 고정 문자열을 이미 만들어진 결과인 것처럼
+  // 넣어 둔다(체험하기로 들어온 사람이 화면이 뭘 보여주는지 바로 알 수 있게).
+  const noticeCreator = teachers[0] ?? staffIds[0]!
+  const { data: notices, error: noticesError } = await db.from('notices').insert([
+    {
+      school_id: schoolId,
+      notice_type: '현장체험학습',
+      title: '초등부 가을 현장체험학습 안내',
+      event_date: toDate(14),
+      place: '서울대공원',
+      items: ['물통', '편한 신발', '모자'],
+      audience: '초등 전체',
+      level: 1,
+      detail_enc: encryptSecret('가을 현장체험학습을 갑니다. 편한 옷과 신발을 입혀 보내 주세요.'),
+      output_enc: encryptSecret('가을에 놀러 가요. 물통, 편한 신발, 모자를 챙겨요.'),
+      created_by: noticeCreator.id,
+    },
+    {
+      school_id: schoolId,
+      notice_type: '준비물',
+      title: '2학기 미술 준비물 안내',
+      event_date: null,
+      place: null,
+      items: ['색연필', '스케치북'],
+      audience: '중등 전체',
+      level: 2,
+      detail_enc: encryptSecret('2학기 미술 수업에 색연필과 스케치북을 준비해 주세요.'),
+      output_enc: encryptSecret('미술 시간에 색연필과 스케치북이 필요해요. 다음 주까지 챙겨 주세요.'),
+      created_by: noticeCreator.id,
+    },
+  ]).select('id')
+  if (noticesError) throw noticesError
+
+  const { error: meetingNotesError } = await db.from('meeting_notes').insert([
+    {
+      school_id: schoolId,
+      title: '3학년 학년협의회',
+      meeting_date: toDate(-3),
+      category: '학년협의회',
+      raw_text_enc: encryptSecret(
+        '가을 현장체험학습 일정을 논의했다. 서울대공원으로 확정. 담임들이 학부모 동의서를 이번 주까지 수합하기로 했다. 다음 협의회는 2주 뒤.',
+      ),
+      summary_enc: encryptSecret(
+        '결정사항: 가을 현장체험학습 장소를 서울대공원으로 확정. 담당: 각 반 담임(학부모 동의서 수합). 기한: 이번 주까지. 다음 협의회: 2주 뒤.',
+      ),
+      created_by: noticeCreator.id,
+    },
+  ])
+  if (meetingNotesError) throw meetingNotesError
+  log(`  가정통신문 자료함 ${notices?.length ?? 0}건 · 협의록 1건`)
+
   // --- 알림 샘플 --------------------------------------------------------------
   // 지출 등록 결과를 신청한 사람에게 알림으로 보낸다. 체험하기로 teacher@ 등을
   // 뽑아 들어갔을 때 종 모양 알림 아이콘이 비어 있지 않게 하려는 목적.

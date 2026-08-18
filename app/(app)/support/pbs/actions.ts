@@ -2,8 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { summarizePbsTrend as callSummarizePbsTrend } from '@/lib/ai/gemini'
+import type { TrendBreakdown } from '@/lib/pbs/trend'
 import { AUDIT_ACTIONS, writeAudit } from '@/lib/security/audit'
-import { encryptSecret } from '@/lib/security/crypto'
+import { decryptSecret, encryptSecret } from '@/lib/security/crypto'
+import { blockedFindings, maskPII } from '@/lib/security/pii'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, requireSession } from '@/lib/supabase/server'
 
 export interface RecordResult {
@@ -97,4 +101,72 @@ export async function deleteRecord(formData: FormData): Promise<void> {
   const supabase = await createClient()
   await supabase.from('pbs_records').delete().eq('id', id)
   revalidatePath('/support/pbs')
+}
+
+export interface TrendSummaryResult {
+  summary?: string
+  error?: string
+}
+
+/**
+ * 이미 화면에 보이는 집계 수치(건수·분류명·장소명)만 Gemini로 보낸다.
+ * 재조회 없음 — 학생 이름이나 개별 기록 원문은 이 함수에 아예 들어오지
+ * 않는다(page.tsx가 넘기는 breakdown 자체가 집계 결과뿐).
+ */
+export async function summarizePbsTrend(breakdown: TrendBreakdown): Promise<TrendSummaryResult> {
+  const session = await requireSession()
+
+  // 집계 수치엔 개인정보가 있을 수 없지만, 방어적으로 한 번 더 마스킹을 거친다.
+  const asText = JSON.stringify(breakdown)
+  const masked = maskPII(asText)
+  if (blockedFindings(masked.findings).length > 0) {
+    return { error: '전송할 수 없는 값이 포함돼 있습니다.' }
+  }
+
+  const keySource: 'personal' | 'school' | null = session.profile.gemini_key_enc
+    ? 'personal'
+    : session.school.gemini_key_enc
+      ? 'school'
+      : null
+  const encryptedKey = session.profile.gemini_key_enc ?? session.school.gemini_key_enc
+
+  if (!encryptedKey || !keySource) {
+    return { error: '등록된 Gemini 키가 없습니다. 내 설정 또는 학교 관리에서 키를 등록해 주세요.' }
+  }
+
+  const admin = createAdminClient()
+
+  try {
+    const apiKey = decryptSecret(encryptedKey)
+    const summary = await callSummarizePbsTrend(apiKey, breakdown)
+
+    await admin.from('ai_usage_logs').insert({
+      school_id: session.school.id,
+      profile_id: session.userId,
+      tool: 'pbs_trend_summary',
+      key_source: keySource,
+      masked_count: masked.findings.length,
+      ok: true,
+    })
+    await writeAudit({
+      schoolId: session.school.id,
+      actorId: session.userId,
+      actorName: session.profile.name,
+      action: AUDIT_ACTIONS.aiRequest,
+      meta: { tool: 'pbs_trend_summary' },
+    })
+
+    return { summary }
+  } catch {
+    await admin.from('ai_usage_logs').insert({
+      school_id: session.school.id,
+      profile_id: session.userId,
+      tool: 'pbs_trend_summary',
+      key_source: keySource,
+      masked_count: masked.findings.length,
+      ok: false,
+      error_code: 'gemini_call_failed',
+    })
+    return { error: '요약하지 못했습니다. 잠시 후 다시 시도해 주세요.' }
+  }
 }

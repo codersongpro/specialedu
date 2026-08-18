@@ -82,6 +82,8 @@ export const NAV: NavCategory[] = [
     items: [
       { href: '/toolbox/easy-read', label: '쉬운글 안내문' },
       { href: '/toolbox/media', label: '수업 자료 찾기' },
+      { href: '/toolbox/meeting-notes', label: '협의록 정리' },
+      { href: '/toolbox/iep-draft', label: 'IEP 목표 초안' },
     ],
   },
   {
