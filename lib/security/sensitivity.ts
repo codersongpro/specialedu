@@ -84,6 +84,11 @@ export const NAV: NavCategory[] = [
       { href: '/toolbox/media', label: '수업 자료 찾기' },
       { href: '/toolbox/meeting-notes', label: '협의록 정리' },
       { href: '/toolbox/iep-draft', label: 'IEP 목표 초안' },
+      { href: '/toolbox/social-story', label: '사회적 이야기' },
+      { href: '/toolbox/visual-schedule', label: '시각적 일과표' },
+      { href: '/toolbox/task-analysis', label: '작업분석' },
+      { href: '/toolbox/material-levels', label: '수업자료 난이도 변환' },
+      { href: '/toolbox/sensory-alternatives', label: '감각특성 활동 대안' },
     ],
   },
   {

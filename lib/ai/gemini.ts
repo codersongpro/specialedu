@@ -266,3 +266,182 @@ export async function summarizePbsTrend(apiKey: string, input: PbsTrendSummaryIn
   if (!summary) throw new Error('Gemini 응답을 읽을 수 없습니다')
   return summary
 }
+
+export interface SocialStoryInput {
+  title: string
+  /** 이미 마스킹된 상황 설명 — [[P1]] 같은 토큰이 그대로 남아 있어야 한다 */
+  situation: string
+  level: EasyReadLevel
+}
+
+export interface SocialStoryResult {
+  text: string
+  keywords: string[]
+}
+
+/**
+ * 사회적 이야기(Social Story) 생성. 상황 설명 → 다른 사람의 감정 →
+ * 대처 행동 순서로 짧게 쓰도록 지시한다. easy-read의 3단계 쉬운글
+ * 수준 개념을 그대로 쓴다.
+ */
+export async function generateSocialStory(apiKey: string, input: SocialStoryInput): Promise<SocialStoryResult> {
+  const prompt = `발달장애 학생을 위한 사회적 이야기(Social Story)를 씁니다.
+${LEVEL_INSTRUCTION[input.level]}
+다음 순서로 4~8문장을 씁니다: ① 상황을 있는 그대로 설명하는 문장
+② 그 상황에서 다른 사람들이 느끼거나 생각하는 것을 설명하는 문장
+③ 학생이 할 수 있는 대처 행동을 안내하는 문장. 문장에 [[P1]], [[P2]]
+같은 대괄호 토큰이 보이면 절대 지우거나 바꾸지 말고 그 형태 그대로
+남겨 두세요.
+
+제목: ${input.title}
+상황: ${input.situation}
+
+다음 JSON 형식으로만 답하세요:
+{"text": "이야기 전체", "keywords": ["핵심 낱말 3~6개(그림으로 나타낼 수 있는 명사 위주, 한 단어씩)"]}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+
+  const resultText = typeof record.text === 'string' ? record.text : ''
+  if (!resultText) throw new Error('Gemini 응답을 읽을 수 없습니다')
+
+  const keywords = Array.isArray(record.keywords)
+    ? record.keywords.filter((k): k is string => typeof k === 'string').slice(0, 6)
+    : []
+
+  return { text: resultText, keywords }
+}
+
+export interface VisualScheduleItem {
+  label: string
+  keyword: string
+}
+
+/**
+ * 시각적 일과표 생성. 활동마다 학생이 이해하기 쉬운 짧은 표현(label)과
+ * 그림 검색에 쓸 낱말(keyword) 하나씩을 만든다. items는 이미 마스킹된
+ * 상태로 들어온다 — 순서를 그대로 유지해서 반환해야 한다.
+ */
+export async function generateVisualSchedule(
+  apiKey: string,
+  input: { title: string; items: string[] },
+): Promise<VisualScheduleItem[]> {
+  const prompt = `발달장애 학생을 위한 시각적 일과표를 만듭니다. 아래
+활동 목록 순서를 그대로 유지하면서, 각 활동을 학생이 이해하기 쉬운
+아주 짧은 표현(2~4어절)과 그림으로 찾을 낱말 하나로 바꿔 주세요.
+문장에 [[P1]], [[P2]] 같은 대괄호 토큰이 보이면 절대 지우거나 바꾸지
+말고 그 형태 그대로 남겨 두세요.
+
+일과 제목: ${input.title}
+활동 목록(순서대로):
+${input.items.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+다음 JSON 형식으로만 답하세요(activities 배열 길이와 순서는 입력과
+반드시 같아야 합니다):
+{"activities": [{"label": "짧은 표현", "keyword": "그림 검색 낱말"}, ...]}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const activities = Array.isArray(record.activities) ? record.activities : []
+
+  const result: VisualScheduleItem[] = activities
+    .filter((a): a is Record<string, unknown> => typeof a === 'object' && a !== null)
+    .map((a) => ({
+      label: typeof a.label === 'string' ? a.label : '',
+      keyword: typeof a.keyword === 'string' ? a.keyword : '',
+    }))
+    .filter((a) => a.label && a.keyword)
+
+  if (result.length === 0) throw new Error('일과표를 만들지 못했습니다')
+  return result
+}
+
+/** 전공과 작업분석 — 작업을 5~12개의 짧고 구체적인 수행 단계로 나눈다. */
+export async function generateTaskAnalysis(
+  apiKey: string,
+  input: { taskName: string; currentLevel: string },
+): Promise<string[]> {
+  const prompt = `특수학교 전공과(직업교육) 작업분석을 만듭니다. 아래
+작업을 학생이 순서대로 따라 할 수 있도록 5~12개의 짧고 구체적인 단계로
+나눠 주세요. 한 단계는 동작 하나만 담습니다(예: "수도꼭지를 돌려
+물을 튼다"). 문장에 [[P1]], [[P2]] 같은 대괄호 토큰이 보이면 절대
+지우거나 바꾸지 말고 그 형태 그대로 남겨 두세요.
+
+작업: ${input.taskName}
+${input.currentLevel ? `현재 수행 수준: ${input.currentLevel}` : ''}
+
+다음 JSON 형식으로만 답하세요:
+{"steps": ["1단계", "2단계", "..."]}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const steps = Array.isArray(record.steps)
+    ? record.steps.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
+    : []
+  if (steps.length === 0) throw new Error('작업분석을 만들지 못했습니다')
+  return steps.slice(0, 12)
+}
+
+export interface MaterialLevelsResult {
+  high: string
+  mid: string
+  low: string
+}
+
+/** 수업자료 3단계 난이도 변환 — easy-read와 같은 3단계 철학을 임의의 수업 자료 본문에 적용한다. */
+export async function generateMaterialLevels(
+  apiKey: string,
+  input: { text: string; subject: string | null },
+): Promise<MaterialLevelsResult> {
+  const prompt = `다음 수업 자료를 세 가지 난이도로 다시 씁니다. 문장에
+[[P1]], [[P2]] 같은 대괄호 토큰이 보이면 절대 지우거나 바꾸지 말고 그
+형태 그대로 남겨 두세요.
+
+- 상: 원문과 비슷한 수준으로, 문장만 자연스럽게 다듬습니다
+- 중: 쉬운 낱말 위주로 다시 씁니다. 어려운 한자어는 풀어 씁니다
+- 하: 문장을 아주 짧게(3~5어절) 쓰고 가장 쉬운 낱말만 씁니다
+
+${input.subject ? `교과: ${input.subject}` : ''}
+원본 자료: ${input.text}
+
+다음 JSON 형식으로만 답하세요:
+{"high": "상 수준 전체", "mid": "중 수준 전체", "low": "하 수준 전체"}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+
+  const high = typeof record.high === 'string' ? record.high : ''
+  const mid = typeof record.mid === 'string' ? record.mid : ''
+  const low = typeof record.low === 'string' ? record.low : ''
+  if (!high || !mid || !low) throw new Error('Gemini 응답을 읽을 수 없습니다')
+
+  return { high, mid, low }
+}
+
+/** 감각특성 고려 활동 대안 — 지정된 감각 민감도를 고려한 대안 활동 2~4개를 제안한다. */
+export async function generateSensoryAlternatives(
+  apiKey: string,
+  input: { activity: string; sensitivities: string[]; note: string },
+): Promise<string[]> {
+  const prompt = `특수학교 수업 활동의 감각특성 고려 대안을 제안합니다.
+아래 활동을, 학생이 가진 감각 민감도를 고려해 대신할 수 있는 대안
+활동을 2~4개 제안해 주세요. 각 대안은 원래 활동과 같은 학습 목표를
+최대한 유지하면서 감각 자극만 조정합니다. 문장에 [[P1]], [[P2]] 같은
+대괄호 토큰이 보이면 절대 지우거나 바꾸지 말고 그 형태 그대로 남겨
+두세요.
+
+원래 활동: ${input.activity}
+고려할 감각특성: ${input.sensitivities.join(', ')}
+${input.note ? `추가 설명: ${input.note}` : ''}
+
+다음 JSON 형식으로만 답하세요:
+{"alternatives": ["대안1", "대안2"]}`
+
+  const text = await callGemini(apiKey, [{ text: prompt }])
+  const record = parseJsonRecord(text)
+  const alternatives = Array.isArray(record.alternatives)
+    ? record.alternatives.filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
+    : []
+  if (alternatives.length === 0) throw new Error('대안을 만들지 못했습니다')
+  return alternatives.slice(0, 4)
+}
