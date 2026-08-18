@@ -2054,9 +2054,19 @@ end $$;
 --
 -- 대여는 교시가 아니라 날짜(며칠) 단위다 — 태블릿·보행기 같은 교구는
 -- 하루 종일, 며칠씩 빌려 쓰는 게 보통이라 periods 시정표와 맞지 않는다.
+--
+-- 맨 앞에서 두 테이블을 지우고 다시 만든다(reset.sql과 같은 원칙) —
+-- 이 기능은 아직 한 번도 정상 동작한 적이 없어(이 마이그레이션이 처음
+-- 적용되는 참이라) 실제 데이터가 있을 수 없고, 그래서 안전하게 지우고
+-- 다시 만들 수 있다. 여러 번 다시 실행해도(중간에 끊겼거나, 붙여넣기가
+-- 일부만 되는 등으로 스키마가 어중간하게 반쯤 만들어진 경우 포함) 항상
+-- 같은 결과로 끝난다.
 -- =============================================================================
 
-create table if not exists public.equipment_items (
+drop table if exists public.equipment_loans cascade;
+drop table if exists public.equipment_items cascade;
+
+create table public.equipment_items (
   id             uuid primary key default gen_random_uuid(),
   school_id      uuid not null references public.schools(id) on delete cascade,
   name           text not null,
@@ -2073,7 +2083,7 @@ create index if not exists equipment_items_school_idx on public.equipment_items(
 create or replace trigger equipment_items_touch before update on public.equipment_items
   for each row execute function public.touch_updated_at();
 
-create table if not exists public.equipment_loans (
+create table public.equipment_loans (
   id          uuid primary key default gen_random_uuid(),
   school_id   uuid not null references public.schools(id) on delete cascade,
   item_id     uuid not null references public.equipment_items(id) on delete cascade,
