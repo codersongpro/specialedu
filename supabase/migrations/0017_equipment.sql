@@ -16,7 +16,7 @@
 -- 하루 종일, 며칠씩 빌려 쓰는 게 보통이라 periods 시정표와 맞지 않는다.
 -- =============================================================================
 
-create table public.equipment_items (
+create table if not exists public.equipment_items (
   id             uuid primary key default gen_random_uuid(),
   school_id      uuid not null references public.schools(id) on delete cascade,
   name           text not null,
@@ -29,11 +29,11 @@ create table public.equipment_items (
   unique (school_id, name)
 );
 
-create index equipment_items_school_idx on public.equipment_items(school_id) where is_active;
-create trigger equipment_items_touch before update on public.equipment_items
+create index if not exists equipment_items_school_idx on public.equipment_items(school_id) where is_active;
+create or replace trigger equipment_items_touch before update on public.equipment_items
   for each row execute function public.touch_updated_at();
 
-create table public.equipment_loans (
+create table if not exists public.equipment_loans (
   id          uuid primary key default gen_random_uuid(),
   school_id   uuid not null references public.schools(id) on delete cascade,
   item_id     uuid not null references public.equipment_items(id) on delete cascade,
@@ -48,9 +48,9 @@ create table public.equipment_loans (
   check (ends_on >= starts_on)
 );
 
-create index equipment_loans_item_idx on public.equipment_loans(item_id, starts_on, ends_on)
+create index if not exists equipment_loans_item_idx on public.equipment_loans(item_id, starts_on, ends_on)
   where returned_at is null;
-create index equipment_loans_borrower_idx on public.equipment_loans(borrower_id, starts_on);
+create index if not exists equipment_loans_borrower_idx on public.equipment_loans(borrower_id, starts_on);
 
 -- -----------------------------------------------------------------------------
 -- 재고 초과 대여 방지
@@ -99,32 +99,41 @@ begin
 end;
 $$;
 
-create trigger equipment_loans_check_capacity
+create or replace trigger equipment_loans_check_capacity
   before insert or update of item_id, quantity, starts_on, ends_on, returned_at
   on public.equipment_loans
   for each row execute function public.check_equipment_capacity();
 
 -- =============================================================================
 -- RLS
+--
+-- drop if exists 뒤에 create — 이 파일을 다시 실행해도(예: 앞부분에서
+-- 한 번 걸려 중단됐던 걸 이어서 돌리는 경우) 안전하게 끝까지 통과한다.
 -- =============================================================================
 alter table public.equipment_items enable row level security;
 alter table public.equipment_loans enable row level security;
 
 -- 품목: 조회는 같은 학교 전체, 등록·수정은 관리자만 (rooms 패턴과 동일).
+drop policy if exists equipment_items_select on public.equipment_items;
 create policy equipment_items_select on public.equipment_items for select
   using (public.same_school(school_id));
+drop policy if exists equipment_items_write on public.equipment_items;
 create policy equipment_items_write on public.equipment_items for all
   using (public.same_school(school_id) and public.is_admin())
   with check (public.same_school(school_id) and public.is_admin());
 
 -- 대여: 조회는 같은 학교 전체, 생성·수정(반납 처리)·취소는 본인 또는
 -- 관리자만 (room_reservations 패턴과 동일).
+drop policy if exists equipment_loans_select on public.equipment_loans;
 create policy equipment_loans_select on public.equipment_loans for select
   using (public.same_school(school_id));
+drop policy if exists equipment_loans_insert on public.equipment_loans;
 create policy equipment_loans_insert on public.equipment_loans for insert
   with check (public.same_school(school_id) and (borrower_id = auth.uid() or public.is_admin()));
+drop policy if exists equipment_loans_update on public.equipment_loans;
 create policy equipment_loans_update on public.equipment_loans for update
   using (public.same_school(school_id) and (borrower_id = auth.uid() or public.is_admin()));
+drop policy if exists equipment_loans_delete on public.equipment_loans;
 create policy equipment_loans_delete on public.equipment_loans for delete
   using (public.same_school(school_id) and (borrower_id = auth.uid() or public.is_admin()));
 
@@ -134,7 +143,17 @@ create policy equipment_loans_delete on public.equipment_loans for delete
 do $$
 begin
   if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
-    alter publication supabase_realtime add table public.equipment_items;
-    alter publication supabase_realtime add table public.equipment_loans;
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'equipment_items'
+    ) then
+      alter publication supabase_realtime add table public.equipment_items;
+    end if;
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'equipment_loans'
+    ) then
+      alter publication supabase_realtime add table public.equipment_loans;
+    end if;
   end if;
 end $$;
