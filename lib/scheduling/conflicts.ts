@@ -102,6 +102,11 @@ export function findConflicts(req: BookingRequest, ctx: ScheduleContext): Confli
   const occupiedClassIds = expandToClassIds(req.classId, req.courseGroupId, ctx)
 
   if (occupiedClassIds.size > 0) {
+    // 정규 시간표는 경고만 한다 — 막지 않는다. isSameLesson()이 잡아내는 건
+    // "같은 교시·같은 교사"뿐이라, 교과전담·협력수업처럼 그 교시를 다른
+    // 교사가 맡는 경우엔 exemption을 못 타 학급이 자기 자신과 충돌하는
+    // 것처럼 보고돼 정작 특별실로 옮기려는 정상적인 예약까지 막혔다.
+    // 반면 특별실끼리의 진짜 중복(아래 reservations 루프)은 여전히 막는다.
     for (const slot of ctx.slots) {
       if (slot.dayOfWeek !== req.dayOfWeek) continue
       if (!overlaps(span, slot)) continue
@@ -111,7 +116,7 @@ export function findConflicts(req: BookingRequest, ctx: ScheduleContext): Confli
       if (clash.length === 0) continue
       conflicts.push({
         type: req.courseGroupId ? 'group_busy' : 'class_busy',
-        severity: 'block',
+        severity: 'warn',
         message: `${classNames(clash, ctx)}은 이 시간에 ${describeSlotTarget(slot, ctx)} 수업 중입니다`,
         withId: slot.id,
       })

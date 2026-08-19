@@ -195,7 +195,12 @@ describe('교사 중복', () => {
 })
 
 describe('학급 · 수강그룹 중복', () => {
-  it('학급이 이미 다른 수업 중이면 막는다', () => {
+  it('학급이 이미 다른 수업 중이면 경고하되 막지는 않는다', () => {
+    // 교과전담·협력수업처럼 그 교시를 다른 교사가 맡고 있으면 teacher_busy의
+    // isSameLesson exemption을 못 탄다 — 정규수업을 특별실로 옮기려는
+    // 정상적인 예약(담임이 직접 등록)까지 "학급이 이미 수업 중"이라며
+    // 막혀버렸던 실제 버그. 정규 시간표발 학급 중복은 경고만 하고, 특별실끼리의
+    // 진짜 중복(아래 "다른 예약과 겹치면 막는다")만 막는다.
     const ctx = makeContext({
       slots: [slot({ course: 'high', periodNo: 2, teacherId: 't-lee', classId: 'cls-h3a', dayOfWeek: 1 })],
     })
@@ -205,6 +210,25 @@ describe('학급 · 수강그룹 중복', () => {
       ctx,
     )
     expect(conflicts.some((c) => c.type === 'class_busy')).toBe(true)
+    expect(conflicts.find((c) => c.type === 'class_busy')?.severity).toBe('warn')
+    expect(hasBlocking(conflicts)).toBe(false)
+  })
+
+  it('학급이 이미 다른 특별실 예약과 겹치면 막는다', () => {
+    // 정규 시간표가 아니라 다른 특별실 예약과 진짜로 겹치는 경우는
+    // 여전히 막아야 한다 — 위 완화가 여기까지 풀어주면 안 된다.
+    const ctx = makeContext({
+      reservations: [
+        reservation({ roomId: 'room-sensory', course: 'high', periodNo: 2, classId: 'cls-h3a' }),
+      ],
+    })
+
+    const conflicts = findConflicts(
+      bookingRequest({ roomId: 'room-gym', course: 'high', periodNo: 2, classId: 'cls-h3a', requesterId: 't-kim' }),
+      ctx,
+    )
+    expect(hasBlocking(conflicts)).toBe(true)
+    expect(conflicts.some((c) => c.type === 'class_busy' && c.severity === 'block')).toBe(true)
   })
 
   /**
